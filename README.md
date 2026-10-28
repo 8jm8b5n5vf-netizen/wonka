@@ -1,8 +1,8 @@
-# WONKA 0.2.1 — vocal transitions
+# WONKA 0.2.2 — vocal transitions
 
 Plugin C++17/JUCE 8.0.6 de efeito para **carregar voz → Reverse/Throw → ajustar → ouvir → arrastar à DAW**. Interface compacta de **360 × 640 pontos lógicos**, própria, inspirada na organização das referências. Não usa imagens, logo, marca ou algoritmos proprietários do Boomerang, nem promete som idêntico.
 
-**Destino: VST3 no FL Studio/macOS.** AU também é configurado no Mac; Windows/Linux têm VST3. Consulte [o que realmente foi testado](docs/VALIDATION.md) e [a revisão das falhas](docs/REVIEW-0.2.md). A versão aparece no rodapé. A logo original do usuário está incorporada ao plugin; veja [Assets](Assets/README.md).
+**Destino: VST3 no FL Studio/macOS.** AU também é configurado no Mac; Windows/Linux têm VST3. Consulte [o que realmente foi testado](docs/VALIDATION.md) e [a revisão das falhas](docs/REVIEW-0.2.md). A versão aparece no rodapé. A versão branca 4K da logo do usuário está incorporada ao plugin; veja [Assets](Assets/README.md).
 
 ## Atualizar no Mac, passo a passo
 
@@ -12,13 +12,13 @@ Plugin C++17/JUCE 8.0.6 de efeito para **carregar voz → Reverse/Throw → ajus
 4. O script procura o CMake em Aplicativos, identifica o Mac (inclusive Apple Silicon com Terminal em Rosetta) e solicita um build **universal arm64 + x86_64**, cobrindo o FL nativo ou em Rosetta. Isso mantém as arquiteturas que compilaram na versão anterior. Aguarde a compilação e os testes. Pare se houver erro.
 5. Com o FL fechado, digite `bash`, espaço, arraste **scripts/install-mac.command** e aperte Enter. Ele instala o VST3 no usuário atual, sem sudo, preservando a versão anterior em backup.
 6. Abra o FL. Em **Options → Manage plugins**, ative a verificação e a nova busca dos plugins já verificados (**Verify plugins / Rescan previously verified plugins**, conforme versão), então **Find installed plugins**.
-7. Abra uma **nova instância** de WONKA no Mixer e confirme **v0.2.1** no rodapé. Se ainda mostrar a versão antiga, feche/reabra o FL e confira a pasta instalada antes de recompilar. Não altere o identificador do plugin nem apague seu projeto para forçar a busca.
+7. Abra uma **nova instância** de WONKA no Mixer e confirme **v0.2.2** no rodapé. Se ainda mostrar a versão antiga, feche/reabra o FL e confira a pasta instalada antes de recompilar. Não altere o identificador do plugin nem apague seu projeto para forçar a busca.
 
 Pré-requisitos, caso faltem: `xcode-select --install` e [CMake 3.22+](https://cmake.org/download/), instalado como `/Applications/CMake.app`. Internet é necessária para baixar o JUCE na primeira configuração.
 
 O VST3 fica em `build-mac/WONKA_artefacts/Release/VST3/WONKA.vst3`. O instalador copia o **bundle inteiro** para `~/Library/Audio/Plug-Ins/VST3/`. O AU fica em `AU/WONKA.component`, para cópia opcional a `~/Library/Audio/Plug-Ins/Components/`. Não se abre o bundle com dois cliques: ele é carregado pela DAW.
 
-A identidade foi preservada: bundle `audio.wonka.effect`, fabricante `Wnka`, plugin `Wnk1`. Apenas a versão mudou para 0.2.1. A compilação local usa a assinatura ad-hoc provida pelo JUCE quando aplicável; não há Developer ID/notarização de distribuição. Para validar AU no Mac: `auval -v aufx Wnk1 Wnka`.
+A identidade foi preservada: bundle `audio.wonka.effect`, fabricante `Wnka`, plugin `Wnk1`. Apenas a versão mudou para 0.2.2. A compilação local usa a assinatura ad-hoc provida pelo JUCE quando aplicável; não há Developer ID/notarização de distribuição. Para validar AU no Mac: `auval -v aufx Wnk1 Wnka`.
 
 ## Primeiro teste no FL Studio
 

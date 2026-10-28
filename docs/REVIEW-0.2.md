@@ -45,3 +45,7 @@ O usuário enviou posteriormente o PNG original pelo GitHub. O arquivo RGBA de
 alterar seus bytes. O recurso é incorporado por juce_add_binary_data, mantém a
 cor preta e é ajustado proporcionalmente no cabeçalho claro. O nome WONKA e os
 identificadores de plugin foram mantidos. A versão 0.2.1 identifica essa revisão.
+
+## Atualização visual 0.2.2
+
+A pedido do usuário, a logo foi convertida para branco, usando sua transparência original, e exportada em 4096 × 1746. O original preto permanece intacto em Assets. O cabeçalho agora é grafite para oferecer contraste à versão branca. A ampliação raster usa Lanczos; não há alegação de vetorização nem de novos detalhes originais em 4K.

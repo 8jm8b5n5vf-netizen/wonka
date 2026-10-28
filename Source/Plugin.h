@@ -47,7 +47,7 @@ public:
   bool resultIsCurrent() const;
   void prepareDragFile(int bits, double rate);
   juce::File preparedDragFile(int bits, double rate) const;
-  static constexpr const char *version = "0.2.1";
+  static constexpr const char *version = "0.2.2";
   std::shared_ptr<const Clip> source() const;
   std::shared_ptr<const Clip> result() const;
   juce::String status() const;

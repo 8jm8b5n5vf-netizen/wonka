@@ -13,4 +13,4 @@ if [ -e "$wonka_destination/WONKA.vst3" ]; then
 fi
 ditto "$wonka_source" "$wonka_destination/WONKA.vst3"
 echo 'WONKA instalado. No FL: Manage plugins > Verify plugins > Rescan previously verified plugins > Find installed plugins.'
-echo 'Confirme v0.2.1 no rodape. A copia anterior foi preservada em Application Support/WonkaAudio/Backups.'
+echo 'Confirme v0.2.2 no rodape. A copia anterior foi preservada em Application Support/WonkaAudio/Backups.'

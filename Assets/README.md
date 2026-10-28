@@ -1,10 +1,12 @@
-# Logo original
+# Logo branca 4K
 
-`WONKA-logo.png` é o PNG enviado pelo usuário ao GitHub como
-“Logotipo graffiti WOTRA em preto.png”. Foi apenas renomeado: os bytes da imagem
-foram preservados. Formato RGBA, 1921 × 819, com transparência.
+`WONKA-logo.png`: versão branca RGBA de 4096 × 1746, fundo transparente.
+A máscara de transparência do PNG original foi preservada na conversão de cor
+e ampliada proporcionalmente com Lanczos. Não foi redesenhada nem vetorizada;
+4K descreve a dimensão de exportação, não novos detalhes vetoriais.
 
-O CMake usa juce_add_binary_data para incorporar o arquivo ao plugin; não há
-caminho externo em runtime. A logo é desenhada sem recoloração ou recorte,
-preservando a proporção dentro de 58 × 22 pontos no cabeçalho metálico claro.
-O transform do conteúdo aplica a escala da interface também à logo.
+`WONKA-logo-original-black.png`: cópia intacta do PNG preto enviado pelo usuário,
+1921 × 819. Apenas a versão branca é incorporada ao plugin por BinaryData.
+
+A logo é desenhada sem recorte dentro de 58 × 22 pontos no cabeçalho grafite.
+A escala do conteúdo também se aplica à logo. Versão do plugin: 0.2.2.
