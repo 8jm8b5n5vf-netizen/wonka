@@ -38,6 +38,10 @@ Não foi possível reproduzir a falha do seletor nativo ou do arraste de uma reg
 - Prévia tem rampas de 10 ms no início/parada e volume suavizado em 20 ms. Mudanças de render interrompem a prévia; não há promessa de morph contínuo entre renders diferentes.
 - A pasta persistente de WAVs não é limpa automaticamente, pois o host pode manter referências aos arquivos após fechar o plugin. A portabilidade do projeto exige coletar/copiar samples pela DAW.
 
-## Logo pendente
+## Logo incorporada na revisão 0.2.1
 
-Não veio PNG preto/transparente da logo nos anexos desta revisão. A integração condicional `Assets/WONKA-logo.png` foi preparada com `juce_add_binary_data`; usa a proporção original e não muda sua cor. O cabeçalho tem fundo metálico claro. Sem o PNG, mostra apenas texto WONKA. O arquivo real, seu contraste e sua proporção ainda precisam ser conferidos quando fornecido.
+O usuário enviou posteriormente o PNG original pelo GitHub. O arquivo RGBA de
+1921 × 819 tem transparência; foi renomeado para `Assets/WONKA-logo.png`, sem
+alterar seus bytes. O recurso é incorporado por juce_add_binary_data, mantém a
+cor preta e é ajustado proporcionalmente no cabeçalho claro. O nome WONKA e os
+identificadores de plugin foram mantidos. A versão 0.2.1 identifica essa revisão.

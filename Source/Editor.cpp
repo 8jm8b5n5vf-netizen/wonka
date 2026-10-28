@@ -867,6 +867,7 @@ public:
     g.setGradientFill(ColourGradient(Colour(0xffb3b5b9), 0, 3,
                                      Colour(0xff737982), 360, 38, false));
     g.fillRoundedRectangle(5, 4, 350, 34, 11);
+    g.setOpacity(1.f);
     if (logo.isValid())
       g.drawImageWithin(logo, 12, 9, 58, 22,
                         RectanglePlacement::centred |

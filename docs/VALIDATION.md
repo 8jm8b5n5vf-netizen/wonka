@@ -1,4 +1,4 @@
-# WONKA 0.2.0 — validação de 28/10/2026
+# WONKA 0.2.1 — validação de 28/10/2026
 
 ## Executado nesta revisão
 
@@ -18,13 +18,17 @@ Linux x86-64, GCC 14.2, CMake 4.4.4, JUCE 8.0.6 no commit `51a8a6d7aeae7326956d7
 
 Sinais de teste são sintéticos. Não foi feita avaliação auditiva com voz real, dispositivo físico ou comparação sonora A/B com Boomerang. Os vídeos foram usados para analisar o fluxo/organização/proporção, não para inferir um algoritmo proprietário.
 
+## Logo original incorporada
+
+O PNG enviado pelo usuário ao GitHub foi renomeado para `Assets/WONKA-logo.png`, preservando seus bytes (SHA-256 `6a090ef08b4da8a617f6e901bd49de6f8ff1b85ae7bbaa791b7e434736163084`). É RGBA, 1921 × 819, alpha de 0 a 255. A logo está incorporada via BinaryData; não depende de caminho externo. O desenho mantém os pixels/cor originais e ajusta a imagem proporcionalmente dentro de 58 × 22 pontos no cabeçalho claro. O build Release com o recurso e as duas suítes CTest passaram novamente. A execução gráfica repetiu 223 verificações; o screenshot real foi inspecionado com a logo visível no cabeçalho claro. A versão 0.2.1 identifica essa inclusão; os identificadores do plugin e os algoritmos de áudio foram mantidos.
+
 ## Pendente de teste no ambiente de destino
 
-- **Compilar 0.2.0 no Mac e abrir essa versão no FL Studio.** O log fornecido pelo usuário comprovou build VST3/AU e dois testes da versão anterior, e o usuário relatou sua abertura no FL. Isso não comprova funcionamento da revisão atual.
+- **Compilar 0.2.1 no Mac e abrir essa versão no FL Studio.** O log fornecido pelo usuário comprovou build VST3/AU e dois testes da versão anterior, e o usuário relatou sua abertura no FL. Isso não comprova funcionamento da revisão atual.
 - Seletor nativo macOS (foco, callback e cancelamento no host), drop nativo Finder → display, regiões da playlist → plugin e waveform → playlist. Os testes locais chamaram os alvos JUCE com dados compatíveis; não simularam uma sessão real do FL/macOS.
 - Transporte parado/Smart disable, espaço interceptado pelo host, roteamento de áudio, automação em projetos FLP, múltiplas instâncias, restauração real de sessão FLP e tela Retina física. O teste de prévia chamou processBlock sem exigir transporte em reprodução; o host ainda precisa continuar chamando o plugin.
 - AU nativo, Windows, `auval`, pluginval, assinatura Developer ID, notarização, instaladores assinados e distribuição. A disponibilidade ou resultado dos jobs GitHub Actions não foi confirmado nesta revisão.
-- PNG real da logo: **não fornecido**. A incorporação condicional como BinaryData e o espaço proporcional no cabeçalho foram preparados, mas não houve compilação/validação com o arquivo real.
+- Confirmar o aspecto da logo em uma tela Retina física no FL/macOS. O recurso e a imagem renderizada foram validados no Linux, sem alterar o PNG original.
 - Stress prolongado, mudanças contínuas de tempo/rate, gravação interrompida por reconfiguração do host e pressão de memória em máquinas com pouca RAM.
 
 ## Limites documentados
@@ -43,5 +47,5 @@ Sinais de teste são sintéticos. Não foi feita avaliação auditiva com voz re
 - VST3 Linux: `build/WONKA_artefacts/Release/VST3/WONKA.vst3`.
 - Testes: `build/volta_tests`, `build/volta_integration`; relatório CTest em `build/Testing/Temporary/LastTest.log`.
 - Imagens: `docs/WONKA-preview.png`, `docs/WONKA-options.png`.
-- Fontes empacotadas: `/workspace/WONKA-0.2.0-source.zip`. Não contém binários macOS.
-- Atualização local: `scripts/build-mac.command`, depois `scripts/install-mac.command`. Confirme v0.2.0 no rodapé após o rescan do FL.
+- Fontes empacotadas: `/workspace/WONKA-0.2.1-source.zip`. Não contém binários macOS.
+- Atualização local: `scripts/build-mac.command`, depois `scripts/install-mac.command`. Confirme v0.2.1 no rodapé após o rescan do FL.
