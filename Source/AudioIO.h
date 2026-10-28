@@ -6,8 +6,6 @@ struct Clip {
   // Interleaved minimum/maximum values, generated on the worker, never on
   // paint.
   volta::Audio peaks;
-  std::pair<double, double> suggested{0, 1};
-  bool autoSelect = true;
   double rate = 48000;
   juce::String name;
   void buildPeaks();
@@ -17,3 +15,5 @@ void writeAudioFile(const Clip &, const juce::File &, int bits, double rate,
                     bool protect);
 juce::MemoryBlock encodeAudio(const Clip &);
 std::shared_ptr<Clip> decodeAudio(const juce::MemoryBlock &, juce::String name);
+
+juce::File fileFromDrop(const juce::String &);

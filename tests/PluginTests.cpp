@@ -2,8 +2,50 @@
 #include <chrono>
 #include <iostream>
 #include <thread>
+#if WONKA_ALLOC_PROBE
+#include <cstdlib>
+#include <new>
+thread_local bool watchAudioHeap = false;
+thread_local int audioHeapOperations = 0;
+extern "C" void *__real_malloc(size_t);
+extern "C" void *__real_calloc(size_t, size_t);
+extern "C" void *__real_realloc(void *, size_t);
+extern "C" void __real_free(void *);
+extern "C" void *__wrap_malloc(size_t size) {
+  if (watchAudioHeap)
+    ++audioHeapOperations;
+  return __real_malloc(size);
+}
+extern "C" void *__wrap_calloc(size_t n, size_t size) {
+  if (watchAudioHeap)
+    ++audioHeapOperations;
+  return __real_calloc(n, size);
+}
+extern "C" void *__wrap_realloc(void *p, size_t size) {
+  if (watchAudioHeap)
+    ++audioHeapOperations;
+  return __real_realloc(p, size);
+}
+extern "C" void __wrap_free(void *p) {
+  if (watchAudioHeap && p)
+    ++audioHeapOperations;
+  __real_free(p);
+}
+void *operator new(size_t n) {
+  if (auto *p = std::malloc(n ? n : 1))
+    return p;
+  throw std::bad_alloc();
+}
+void *operator new[](size_t n) { return ::operator new(n); }
+void operator delete(void *p) noexcept { std::free(p); }
+void operator delete[](void *p) noexcept { std::free(p); }
+void operator delete(void *p, size_t) noexcept { std::free(p); }
+void operator delete[](void *p, size_t) noexcept { std::free(p); }
+#endif
 using namespace juce;
+static int checks = 0;
 void check(bool v, const char *name) {
+  ++checks;
   if (!v)
     throw std::runtime_error(name);
 }
@@ -48,7 +90,7 @@ int main() {
       stream.release();
       check(w->writeFromAudioSampleBuffer(tone, 0, 4800), "fixture write");
     }
-    VoltaProcessor p;
+    VoltaProcessor p(folder.getChildFile("cache"));
     p.prepareToPlay(48000, 256);
     p.setParam("length", .2f);
     p.setParam("tail", 0);
@@ -61,7 +103,7 @@ int main() {
     p.setParam("start", .2f);
     p.getStateInformation(state);
     source.deleteFile();
-    VoltaProcessor restored;
+    VoltaProcessor restored(folder.getChildFile("cache-restored"));
     restored.prepareToPlay(48000, 256);
     restored.setStateInformation(state.getData(), (int)state.getSize());
     waitFor([&] { return restored.result() != nullptr && !restored.isBusy(); });
@@ -99,7 +141,7 @@ int main() {
     for (int k = 0; k < 10; ++k) {
       for (int c = 0; c < 2; ++c)
         for (int i = 0; i < 256; ++i)
-          block.setSample(c, i, .1f);
+          block.setSample(c, i, c == 0 ? .1f : .2f);
       restored.processBlock(block, midi);
     }
     restored.stopRecord();
@@ -164,11 +206,209 @@ int main() {
       bad = true;
     }
     check(bad, "invalid embedded audio rejected");
+    // Every preset must establish a clean baseline and preserve the source
+    // selection.
+    restored.setParam("start", .1f);
+    restored.setParam("end", .9f);
+    for (int i = 0; i < 17; ++i) {
+      restored.preset(i);
+      check(!restored.presetModified(), "preset clean baseline");
+      check(restored.param("start") > .099f && restored.param("end") > .899f,
+            "preset preserves selection");
+    }
+    restored.setParam("space", .123f);
+    check(restored.presetModified(), "preset modified marker");
+    restored.render();
+    waitFor([&] { return !restored.isBusy(); });
+    // Reject a render immediately on a parameter edit, before the debounce
+    // timer.
+    auto staleFile = folder.getChildFile("must-not-export.wav");
+    restored.setParam("tone", .93f);
+    check(!restored.resultIsCurrent(),
+          "parameter edit immediately invalidates result");
+    restored.exportFile(staleFile, 24, 48000);
+    check(!staleFile.existsAsFile(), "stale export rejected");
+    restored.preview(false);
+    check(!restored.playing, "stale preview rejected");
+    restored.render();
+    waitFor([&] { return restored.resultIsCurrent() && !restored.isBusy(); });
+    restored.prepareDragFile(32, 48000);
+    waitFor([&] { return !restored.isBusy(); });
+    auto cached = restored.preparedDragFile(32, 48000);
+    check(cached.existsAsFile(), "drag WAV prepared before gesture");
+    {
+      auto loaded = readAudioFile(cached);
+      check(loaded->audio == restored.result()->audio,
+            "float WAV samples match rendered samples");
+    }
+    restored.setParam("shape", .12f);
+    check(restored.preparedDragFile(32, 48000) == File{},
+          "stale drag WAV rejected");
+    // Preview matches output at unity gain, after the explicit 10 ms preview
+    // ramp.
+    restored.setParam("bypass", 0);
+    restored.setParam("volume", 1);
+    restored.setParam("tail", 0);
+    restored.setParam("musical", 0);
+    restored.setParam("mode", 0);
+    restored.setParam("length", .1f);
+    restored.render();
+    waitFor([&] { return restored.resultIsCurrent() && !restored.isBusy(); });
+    auto previewClip = restored.result();
+    restored.preview(false);
+    AudioBuffer<float> previewBlock(2, (int)previewClip->audio[0].size());
+    previewBlock.clear();
+    restored.processBlock(previewBlock, midi);
+    bool previewMatches = true;
+    for (int c = 0; c < 2; ++c)
+      for (int i = 960; i < previewBlock.getNumSamples(); ++i)
+        previewMatches &=
+            std::abs(previewBlock.getSample(c, i) -
+                     previewClip->audio[std::min(
+                         (size_t)c, previewClip->audio.size() - 1)][i]) < 1e-6;
+    check(previewMatches,
+          "preview matches export buffer after explicit gain ramps");
+    check(restored.outputPeak.load() > 0, "output meter measures preview");
+    restored.stop();
+    for (int k = 0; k < 4; ++k) {
+      block.clear();
+      restored.processBlock(block, midi);
+    }
+    check(restored.outputPeak.load() == 0,
+          "output meter reaches silence after stop ramp");
+    restored.setParam("bypass", 1);
+    for (int c = 0; c < 2; ++c)
+      for (int i = 0; i < 256; ++i)
+        block.setSample(c, i, 1.2f);
+    restored.processBlock(block, midi);
+    check(restored.inputPeak.load() > 1 && restored.inputClipped.load() &&
+              restored.outputClipped.load(),
+          "real meter clipping latches");
+#if WONKA_ALLOC_PROBE
+    restored.setParam("bypass", 0);
+    restored.render();
+    waitFor([&] { return restored.resultIsCurrent() && !restored.isBusy(); });
+    restored.preview(false);
+    audioHeapOperations = 0;
+    watchAudioHeap = true;
+    restored.processBlock(block, midi);
+    watchAudioHeap = false;
+    check(audioHeapOperations == 0,
+          "audio callback performs no new/malloc/calloc/realloc/free");
+    restored.stop();
+#endif
+    // URI drops preserve escaped spaces and unicode filenames.
+    check(fileFromDrop(URL(aiff).toString(false)) == aiff,
+          "file URL drop decoding");
+    check(fileFromDrop("relative.wav") == File{},
+          "reject relative drop descriptions");
+    auto unicodeFile = folder.getChildFile(String::fromUTF8("voz teste ç.wav"));
+    check(fileFromDrop(URL(unicodeFile).toString(false)) == unicodeFile,
+          "unicode file URL decoding");
+    VoltaProcessor failed(folder.getChildFile("cache-failed"));
+    failed.prepareToPlay(48000, 256);
+    failed.importFile(aiff);
+    waitFor([&] { return failed.resultIsCurrent() && !failed.isBusy(); });
+    failed.importFile(folder.getChildFile("missing.wav"));
+    waitFor([&] { return !failed.isBusy(); });
+    check(failed.phase.load() == VoltaProcessor::Phase::Error &&
+              failed.status().contains("encontrado"),
+          "import error has explicit cause");
+    std::this_thread::sleep_for(std::chrono::milliseconds(160));
+    Timer::callPendingTimersSynchronously();
+    waitFor([&] { return !failed.isBusy(); });
+    check(!failed.resultIsCurrent() && !failed.result() &&
+              failed.phase.load() == VoltaProcessor::Phase::Error,
+          "failed import cannot rerender the previous source on timer");
+    // The recorder stops at its documented capacity, not at an arbitrary render
+    // length.
+    VoltaProcessor limit(folder.getChildFile("cache-limit"));
+    limit.prepareToPlay(8000, 8000);
+    AudioBuffer<float> second(2, 8000);
+    second.clear();
+    limit.record();
+    for (int i = 0; i < 61; ++i)
+      limit.processBlock(second, midi);
+    check(limit.recordingAtLimit.load(), "recording limit signalled");
+    limit.serviceRecording();
+    waitFor([&] { return !limit.isBusy(); });
+    check(limit.source() && limit.source()->audio[0].size() == 480000,
+          "recording capped at exactly 60 seconds");
+    check(limit.status().contains("60 s"), "recording limit status retained");
+    // Empty session restores must clear the previous imported audio.
+    MemoryBlock blank;
+    VoltaProcessor empty(folder.getChildFile("cache-empty"));
+    empty.getStateInformation(blank);
+    restored.setStateInformation(blank.getData(), (int)blank.getSize());
+    check(!restored.source() && !restored.result(),
+          "empty session clears buffers");
+    check(cached.existsAsFile(),
+          "prepared WAV retained after replacing session");
     // Exercise real component painting and resizing when a display is
     // available.
     if (std::getenv("DISPLAY") != nullptr) {
       std::unique_ptr<AudioProcessorEditor> editor(p.createEditor());
-      editor->setSize(900, 1020);
+      check(editor->getWidth() == 360 && editor->getHeight() == 640,
+            "compact default size");
+      auto *content = editor->getChildComponent(0);
+      check(content != nullptr, "content exists");
+      auto *drop = dynamic_cast<FileDragAndDropTarget *>(content);
+      check(drop != nullptr, "editor accepts file drops");
+      drop->filesDropped({"unsupported.mp3"}, 80, 150);
+      check(p.phase.load() == VoltaProcessor::Phase::Error && !p.result(),
+            "unsupported UI drop has explicit error and invalidates output");
+      FileDragAndDropTarget *displayDrop = nullptr;
+      for (int i = 0; i < content->getNumChildComponents(); ++i)
+        if (dynamic_cast<DragAndDropTarget *>(content->getChildComponent(i)))
+          displayDrop = dynamic_cast<FileDragAndDropTarget *>(
+              content->getChildComponent(i));
+      check(displayDrop != nullptr, "waveform is a direct drop target");
+      displayDrop->filesDropped({URL(aiff).toString(false)}, 80, 150);
+      waitFor([&] { return p.resultIsCurrent() && !p.isBusy(); });
+      editor.reset(p.createEditor());
+      check(p.source()->name == aiff.getFileName(),
+            "drop loads AIFF source through UI");
+      // Selecting tabs must never overwrite another tab's value.
+      p.setParam("tone", .37f);
+      p.setParam("shape", .61f);
+      p.setParam("tremolo", .22f);
+      p.setParam("bars", 2.5f);
+      auto *surfaceForTabs = editor->getChildComponent(0);
+      for (auto name : {"Tone", "Shape", "Tremolo", "Bars"}) {
+        bool found = false;
+        for (int i = 0; i < surfaceForTabs->getNumChildComponents(); ++i)
+          if (auto *button =
+                  dynamic_cast<Button *>(surfaceForTabs->getChildComponent(i)))
+            if (button->getButtonText() == name) {
+              button->onClick();
+              found = true;
+              break;
+            }
+        check(found, "tab control is real");
+      }
+      check(std::abs(p.param("tone") - .37f) < 1e-5 &&
+                std::abs(p.param("shape") - .61f) < 1e-5 &&
+                std::abs(p.param("tremolo") - .22f) < 1e-5 &&
+                std::abs(p.param("bars") - 2.5f) < 1e-5,
+            "tab values preserved independently");
+      // Return the visible tab to Tone for the generated preview.
+      for (int i = 0; i < surfaceForTabs->getNumChildComponents(); ++i)
+        if (auto *b =
+                dynamic_cast<Button *>(surfaceForTabs->getChildComponent(i)))
+          if (b->getButtonText() == "Tone")
+            b->onClick();
+      p.render();
+      waitFor([&] { return p.resultIsCurrent() && !p.isBusy(); });
+      editor.reset(p.createEditor());
+      bool marked = false;
+      auto *presetSurface = editor->getChildComponent(0);
+      for (int i = 0; i < presetSurface->getNumChildComponents(); ++i)
+        if (auto *c =
+                dynamic_cast<ComboBox *>(presetSurface->getChildComponent(i)))
+          if (c->getNumItems() == 17)
+            marked = c->getText().startsWith("*");
+      check(marked, "modified preset marker visible in selected label");
+      editor->setSize(360, 640);
       auto image = editor->createComponentSnapshot(editor->getLocalBounds());
       check(image.isValid(), "editor paint");
       auto snapshot =
@@ -178,10 +418,64 @@ int main() {
       auto png = snapshot.createOutputStream();
       check(png != nullptr && PNGImageFormat().writeImageToStream(image, *png),
             "editor snapshot");
-      editor->setSize(1200, 1100);
-      check(editor->getWidth() == 1200, "editor resize");
+      // Secondary options replace the knob area and stay within the same
+      // canvas.
+      Button *gear = nullptr;
+      auto *optionsSurface = editor->getChildComponent(0);
+      for (int i = 0; i < optionsSurface->getNumChildComponents(); ++i)
+        if (auto *b =
+                dynamic_cast<Button *>(optionsSurface->getChildComponent(i)))
+          if (b->getButtonText() == "...")
+            gear = b;
+      check(gear != nullptr, "secondary options button");
+      gear->onClick();
+      bool optionsFound = false;
+      for (int i = 0; i < optionsSurface->getNumChildComponents(); ++i) {
+        auto *c = optionsSurface->getChildComponent(i);
+        if (c->isVisible() && c->getNumChildComponents() > 10) {
+          optionsFound = true;
+          for (int j = 0; j < c->getNumChildComponents(); ++j)
+            check(c->getLocalBounds().contains(
+                      c->getChildComponent(j)->getBounds()),
+                  "secondary control fits panel");
+        }
+      }
+      check(optionsFound, "secondary panel visible");
+      auto optionsImage =
+          editor->createComponentSnapshot(editor->getLocalBounds());
+      auto optionsFile =
+          File::getCurrentWorkingDirectory().getChildFile("WONKA-options.png");
+      optionsFile.deleteFile();
+      auto optionsStream = optionsFile.createOutputStream();
+      check(optionsStream != nullptr && PNGImageFormat().writeImageToStream(
+                                            optionsImage, *optionsStream),
+            "options snapshot");
+      optionsStream.reset();
+      gear->onClick();
+      for (double scale : {.7, .85, 1., 1.25}) {
+        editor->setSize(roundToInt(360 * scale), roundToInt(640 * scale));
+        auto *surface = editor->getChildComponent(0);
+        check(std::abs(surface->getTransform().mat00 - scale) < .002,
+              "single logical content scale");
+        for (int i = 0; i < surface->getNumChildComponents(); ++i) {
+          auto *child = surface->getChildComponent(i);
+          if (child->isVisible())
+            check(surface->getLocalBounds().contains(child->getBounds()),
+                  "visible control within logical canvas");
+        }
+      }
+      MemoryBlock uiState;
+      p.getStateInformation(uiState);
+      editor.reset();
+      VoltaProcessor uiRestored(folder.getChildFile("cache-ui"));
+      uiRestored.setStateInformation(uiState.getData(), (int)uiState.getSize());
+      std::unique_ptr<AudioProcessorEditor> reopened(uiRestored.createEditor());
+      check(reopened->getWidth() == 450 && reopened->getHeight() == 800,
+            "saved editor size restored");
     }
-    std::cout << "Import, render, embedded state, preview, PCM24/float32 "
+    std::cout << checks
+              << " integration checks passed. Import, render, embedded state, "
+                 "preview, PCM24/float32 "
                  "export, recording and bypass passed\n";
     return 0;
   } catch (const std::exception &e) {

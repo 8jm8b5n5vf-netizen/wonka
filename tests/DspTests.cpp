@@ -70,6 +70,8 @@ int main() {
     s.original = true;
     auto original = render(impulse, sr, s);
     check(energy(original[0], 0, 480) > 0, "original inclusion");
+    check(std::abs(original[0][100] - .8f * 100 / 240) < 1e-6,
+          "original remains dry before first echo");
     auto converted = resample(src, 48000, 44100);
     check(converted.size() == 2 && converted[0].size() == 44100,
           "sample-rate conversion");
@@ -160,6 +162,81 @@ int main() {
       for (float value : channel)
         valid &= std::isfinite(value);
     check(valid, "NaN sample sanitised");
+    // Verify all four macro tabs and the main knobs against actual samples.
+    Audio signal(1, std::vector<float>(sr));
+    for (int i = 0; i < sr; ++i)
+      signal[0][i] = .3f;
+    s = Settings{};
+    s.tail = false;
+    s.length = 1;
+    s.space = .3;
+    s.tone = .7;
+    s.shape = .2;
+    auto base = render(signal, sr, s);
+    s.space = .9;
+    check(render(signal, sr, s) != base, "Space changes audio");
+    s.space = .3;
+    s.tone = .1;
+    check(render(signal, sr, s) != base, "Tone changes audio");
+    s.tone = .7;
+    s.shape = .8;
+    check(render(signal, sr, s) != base, "Shape changes audio");
+    s.shape = .2;
+    s.tremolo = .8;
+    auto trem = render(signal, sr, s);
+    check(energy(trem[0], 0, sr) < energy(base[0], 0, sr),
+          "Tremolo modulates audio");
+    s.tremolo = 0;
+    s.length = .5;
+    check(render(signal, sr, s)[0].size() == 24000, "Length controls render");
+    s.musical = true;
+    s.bars = 1;
+    s.bpm = 120;
+    check(render(signal, sr, s)[0].size() == 96000, "Bars overrides Length");
+    s.bars = 2;
+    check(render(signal, sr, s)[0].size() == 192000,
+          "Bars changes musical duration");
+    s = Settings{};
+    s.variant = 1;
+    s.tail = false;
+    s.length = 1;
+    s.shape = .9;
+    auto growing = render(signal, sr, s);
+    check(energy(growing[0], sr * 3 / 4, sr) > energy(growing[0], 0, sr / 4),
+          "Swell grows towards end");
+    Audio marker(1, std::vector<float>(sr));
+    marker[0][4000] = .8f;
+    s = Settings{};
+    s.tail = false;
+    s.length = 1;
+    s.space = 0;
+    s.tone = 1;
+    s.shape = 0;
+    auto backwards = render(marker, sr, s);
+    auto peakAt = std::max_element(backwards[0].begin(), backwards[0].end()) -
+                  backwards[0].begin();
+    check(std::abs((long)peakAt - (sr - 4001)) < 10,
+          "Line really reverses time position");
+    s.mode = 1;
+    s.protect = false;
+    s.space = 0;
+    s.feedback = .94;
+    s.length = 15;
+    s.bpm = 300;
+    s.division = 4;
+    auto stable = render(impulse, sr, s);
+    float max = 0;
+    bool allFinite = true;
+    for (auto &ch : stable)
+      for (float v : ch) {
+        allFinite &= std::isfinite(v);
+        max = std::max(max, std::abs(v));
+      }
+    check(allFinite, "finite unprotected feedback");
+    check(max < 2, "feedback bounded without clipping protection");
+    check(std::abs(toneFrequency(0) - 200) < 1 &&
+              std::abs(toneFrequency(1) - 20000) < 1,
+          "Tone displayed Hz follows cutoff mapping");
     std::cout << checks << " checks passed\n";
     return 0;
   } catch (const std::exception &e) {

@@ -6,6 +6,10 @@ double duration(const Settings &s) {
                               : s.length,
                     .05, 30.);
 }
+double toneFrequency(double normalised, double sampleRate) {
+  return std::min(sampleRate * .45,
+                  200. * std::pow(100., std::clamp(normalised, 0., 1.)));
+}
 double beatDivision(int i) {
   static const double d[] = {1, .5, .75, 1. / 3, .25, .375, 1. / 6, 2};
   return d[std::clamp(i, 0, 7)];
@@ -178,10 +182,6 @@ Audio render(const Audio &input, double sr, const Settings &s) {
                            beatDivision(s.division))),
            total = src[0].size() + (size_t)(seconds * sr);
     out = Audio(2, std::vector<float>(total));
-    if (s.original)
-      for (size_t c = 0; c < 2; ++c)
-        std::copy(src[std::min(c, src.size() - 1)].begin(),
-                  src[std::min(c, src.size() - 1)].end(), out[c].begin());
     Audio echo = src;
     double gain = 1;
     int k = 1;
@@ -219,7 +219,9 @@ Audio render(const Audio &input, double sr, const Settings &s) {
     float low = 0;
     for (size_t i = 0; i < c.size(); ++i) {
       float v = std::isfinite(c[i]) ? c[i] : 0;
-      low += (float)(.03 + s.tone * .95) * (v - low);
+      low += (float)(1. - std::exp(-2 * 3.141592653589793 *
+                                   toneFrequency(s.tone, sr) / sr)) *
+             (v - low);
       v = low *
           (float)(1 - s.tremolo * .5 *
                           (1 - std::cos(2 * 3.141592653589793 * i / sr *
@@ -234,6 +236,19 @@ Audio render(const Audio &input, double sr, const Settings &s) {
       peak = std::max(peak, std::abs(c[i]));
     }
   }
+  // Dry source is added after FX filtering/modulation, retaining its channel
+  // data.
+  if (s.mode == 1 && s.original)
+    for (size_t c = 0; c < out.size(); ++c)
+      for (size_t i = 0; i < src[0].size(); ++i)
+        out[c][i] += src[std::min(c, src.size() - 1)][i];
+  peak = 0;
+  for (auto &channel : out)
+    for (auto &v : channel) {
+      if (!std::isfinite(v))
+        v = 0;
+      peak = std::max(peak, std::abs(v));
+    }
   for (auto &c : out)
     for (auto &v : c) {
       if (s.normalise && peak > 0)

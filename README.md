@@ -1,39 +1,65 @@
-# WONKA — vocal motion
+# WONKA 0.2.0 — vocal transitions
 
-Plugin de efeito C++17/JUCE 8.0.6 com identidade própria, para preparar transições vocais Reverse/Throw. Projeto independente: não usa marca, logotipo, recursos nem algoritmos do Boomerang. O áudio é processado de verdade; não há reconhecimento de palavras ou serviços externos.
+Plugin C++17/JUCE 8.0.6 de efeito para **carregar voz → Reverse/Throw → ajustar → ouvir → arrastar à DAW**. Interface compacta de **360 × 640 pontos lógicos**, própria, inspirada na organização das referências. Não usa imagens, logo, marca ou algoritmos proprietários do Boomerang, nem promete som idêntico.
 
-**Destino do usuário: FL Studio no macOS.** VST3 e AU são configurados no Mac; Windows/Linux compilam VST3. Um binário Linux não pode ser instalado no Mac. Veja [validação e limitações](docs/VALIDATION.md) antes de usar em uma sessão importante.
+**Destino: VST3 no FL Studio/macOS.** AU também é configurado no Mac; Windows/Linux têm VST3. Consulte [o que realmente foi testado](docs/VALIDATION.md) e [a revisão das falhas](docs/REVIEW-0.2.md). A versão aparece no rodapé. O PNG da logo do usuário não veio nos anexos; veja [Assets](Assets/README.md).
 
-## Interface WONKA
+## Atualizar no Mac, passo a passo
 
-Painel grafite com textura de metal escovado, borda chanfrada e encaixes rebaixados. Knobs têm reflexos radiais de metal usinado, aro serrilhado, sombra projetada e marcações turquesa/violeta. Botões e menus recebem iluminação e relevo; o seletor Reverse/Throw usa dois botões. O acabamento é desenhado diretamente na interface JUCE e acompanha o redimensionamento.
+1. Salve a sessão e **feche o FL Studio**.
+2. Baixe o ZIP atualizado do repositório e descompacte. Use os scripts **dessa nova pasta**, não os da versão anterior.
+3. Abra o Terminal. Digite `bash`, dê um espaço, arraste **scripts/build-mac.command** para o Terminal e aperte Enter.
+4. O script procura o CMake em Aplicativos, identifica o Mac (inclusive Apple Silicon com Terminal em Rosetta) e solicita um build **universal arm64 + x86_64**, cobrindo o FL nativo ou em Rosetta. Isso mantém as arquiteturas que compilaram na versão anterior. Aguarde a compilação e os testes. Pare se houver erro.
+5. Com o FL fechado, digite `bash`, espaço, arraste **scripts/install-mac.command** e aperte Enter. Ele instala o VST3 no usuário atual, sem sudo, preservando a versão anterior em backup.
+6. Abra o FL. Em **Options → Manage plugins**, ative a verificação e a nova busca dos plugins já verificados (**Verify plugins / Rescan previously verified plugins**, conforme versão), então **Find installed plugins**.
+7. Abra uma **nova instância** de WONKA no Mixer e confirme **v0.2.0** no rodapé. Se ainda mostrar a versão antiga, feche/reabra o FL e confira a pasta instalada antes de recompilar. Não altere o identificador do plugin nem apague seu projeto para forçar a busca.
 
-## Compilar no seu Mac
+Pré-requisitos, caso faltem: `xcode-select --install` e [CMake 3.22+](https://cmake.org/download/), instalado como `/Applications/CMake.app`. Internet é necessária para baixar o JUCE na primeira configuração.
 
-1. Instale as ferramentas da Apple: abra o Terminal e execute `xcode-select --install`.
-2. Instale [CMake 3.22 ou superior](https://cmake.org/download/). Se já usa Homebrew: `brew install cmake`.
-3. Coloque a pasta deste projeto no Mac. No Terminal, entre nela e execute:
+O VST3 fica em `build-mac/WONKA_artefacts/Release/VST3/WONKA.vst3`. O instalador copia o **bundle inteiro** para `~/Library/Audio/Plug-Ins/VST3/`. O AU fica em `AU/WONKA.component`, para cópia opcional a `~/Library/Audio/Plug-Ins/Components/`. Não se abre o bundle com dois cliques: ele é carregado pela DAW.
 
-```sh
-cmake -S . -B build-mac -DCMAKE_BUILD_TYPE=Release \
-  '-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64' -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
-cmake --build build-mac --config Release --parallel 2
-ctest --test-dir build-mac -C Release --output-on-failure
+A identidade foi preservada: bundle `audio.wonka.effect`, fabricante `Wnka`, plugin `Wnk1`. Apenas a versão mudou para 0.2.0. A compilação local usa a assinatura ad-hoc provida pelo JUCE quando aplicável; não há Developer ID/notarização de distribuição. Para validar AU no Mac: `auval -v aufx Wnk1 Wnka`.
+
+## Primeiro teste no FL Studio
+
+1. No display, **clique para abrir** um WAV/AIFF local curto, ou arraste um arquivo do **Finder** ao display. A fonte deve aparecer com nome, duração e forma de onda, inclusive enquanto o render é preparado. A faixa animada indica progresso indeterminado durante leitura/render. Falhas aparecem no display; passe o mouse no status para ler a causa completa.
+2. Escolha Reverse ou Throw. Use **Vocal** para ouvir a fonte e editar os dois marcadores. Desligue Vocal para voltar ao resultado. Clicar no corpo do display abre o navegador; arrastar os marcadores altera a seleção.
+3. Aperte o botão de reprodução no canto inferior esquerdo do display. Espaço funciona apenas quando o plugin tem foco e o host entrega a tecla. A prévia sai pelo próprio slot do Mixer; confira envio ao Master e volume.
+4. Se o transporte parado fizer o host suspender o plugin, desative **Smart disable** no wrapper para esse teste, ou mantenha o transporte ligado. Os nomes dos controles variam por versão do FL. WONKA não força o host a chamar `processBlock`. O status avisa quando não observa chamadas de áudio durante a prévia.
+5. Quando o render e seu WAV estiverem preparados, **arraste o corpo da forma de onda do resultado** para a playlist. Se o WAV ainda estiver sendo preparado, o status avisa; solte e tente novamente quando pronto. O arquivo é gerado no worker, nunca durante o gesto nem na thread de áudio.
+6. Se o host recusar o arraste, abra **... → Salvar WAV** e importe esse WAV na DAW. Para Reverse, alinhe **o fim do arquivo completo** ao início da voz original. Não há posicionamento automático.
+
+Arrastar regiões proprietárias diretamente da playlist depende do que o FL disponibiliza ao plugin. WONKA aceita caminhos reais, file URLs e descrições JUCE compatíveis que apontem para WAV/AIFF. Não decodifica formatos internos desconhecidos de regiões. Nenhum teste desta revisão comprova um arraste direto de região da playlist do FL/macOS.
+
+## Controles e duração
+
+- **Space** ajusta tamanho/difusão/decaimento do reverb; o valor é o T60 estimado em segundos. **Length** controla a duração principal do Reverse, ou a duração da cauda no Throw, sem alterar o intervalo dos ecos.
+- **s / bars**, sob Length, escolhe a autoridade: segundos de Length **ou** compassos de Bars. Também há **Usar Bars** nas opções. Quando Bars está ativo, Length fica desabilitado. Nunca são multiplicados entre si.
+- Abas **Tone / Shape / Tremolo / Bars** preservam valores separados. Tone mostra o cutoff final em Hz/kHz; Shape mostra o expoente do crescimento; Tremolo mostra porcentagem; Bars mostra compassos. A velocidade do Tremolo fica nas opções.
+- O status mostra duração total efetiva, equivalente em compassos e BPM. BPM/compasso vêm do host quando habilitados e disponíveis, com fallback manual independente. A duração principal/cauda Throw é limitada a 0,05–30 s. Cauda Reverse opcional adiciona a janela finita de reverb (até 6 s); o status inclui esse acréscimo.
+- Alterações relevantes interrompem suavemente a prévia, invalidam o resultado anterior imediatamente e disparam render em segundo plano após breve debounce. É necessário apertar play novamente. Exportação e arraste recusam resultados que não correspondem às configurações atuais.
+- **17 presets próprios** com anterior/próximo; `*` no nome indica parâmetros alterados. Presets não substituem sua seleção, áudio fonte ou BPM/compasso manual.
+- **...** recolhe/exibe as opções no espaço dos knobs, sem aumentar a janela: sincronização, compasso, delay/feedback, Tremolo rate, volume, cauda, fonte + efeito, normalização, clipping e WAV.
+- Escalas **70%, 85%, 100%, 125%** redimensionam janela e conteúdo juntos. O tamanho é salvo na sessão. A escala do dispositivo Retina é gerida pelo JUCE, sem multiplicação manual adicional. Prefira 100%/125% se 70% ficar pequeno na sua tela.
+- Medidores são picos reais de entrada/saída em dBFS; clique para limpar clipping. Volume altera apenas a prévia (mostrado em dB). Bypass preserva a entrada do host. Proteção opcional aplica teto rígido ±0,999; não é um limiter de mastering. Normalização opcional tem pico alvo 0,98 e permanece desligada por padrão.
+
+## Gravação, arquivos e sessão
+
+**REC** captura a entrada do plugin; não abre o microfone do sistema. Roteie a voz ao Mixer. Limite de **60 segundos** com contador/parada/aviso; pare e aguarde o processamento antes de salvar. Importação: WAV/AIFF, mono/estéreo, 8–192 kHz, até 60 s. O render usa conversão sinc com janela para a sample rate da sessão.
+
+O estado da DAW incorpora o áudio fonte como PCM float em Base64, parâmetros, seleção, modo, variante, sincronização, opções, preset e largura da interface. Não depende do arquivo original ou do cache de arraste; a fonte pode ser apagada depois da importação e a sessão ainda a restaura. Captura ainda em andamento não é incorporada. O limite máximo pode acrescentar cerca de 123 MB de áudio Base64 ao XML da sessão; salvar demanda tempo fora do callback de áudio.
+
+WAVs de arraste **não são temporários**. No Mac ficam em:
+
+```text
+~/Library/Application Support/WonkaAudio/WONKA/Rendered/
 ```
 
-Alternativa: execute `scripts/build-mac.command` no Terminal. A primeira configuração baixa o JUCE oficial no commit fixado pelo CMake. Apple Silicon e Intel são solicitados na compilação universal; disponibilidade real depende do SDK instalado. O fluxo de CI em `.github/workflows/build.yml` também prepara builds macOS/Windows, mas só roda depois de enviar o projeto ao GitHub. Ele ainda não foi executado por esta entrega.
+Windows usa AppData/WonkaAudio/WONKA/Rendered; Linux usa o diretório de configuração do usuário. Arquivos têm nomes únicos e não são apagados ao fechar o editor, trocar preset ou substituir a fonte. **Não limpe essa pasta se uma sessão da DAW ainda referenciar seus WAVs.** Para mover o projeto a outro computador, copie/consolide os samples pela DAW. Arquivos da versão anterior já arrastados a partir de diretórios temporários não são migrados automaticamente; consolide/copie esses samples na DAW. A pasta pode crescer; não há exclusão automática porque o plugin não sabe quando a DAW deixou de depender de um arquivo.
 
-### Instalar no FL Studio no Mac
+## Compilar em outros ambientes
 
-Feche o FL Studio. Depois de compilar, copie a **pasta inteira** `WONKA.vst3` de `build-mac/WONKA_artefacts/Release/VST3/` para `~/Library/Audio/Plug-Ins/VST3/`. Crie esse destino se necessário. Para AU, copie `AU/WONKA.component` para `~/Library/Audio/Plug-Ins/Components/`.
-
-Abra o FL Studio, vá a **Options → Manage plugins** e faça uma nova busca (**Find installed plugins**). Adicione WONKA a um slot de efeito do Mixer. Os nomes dos menus podem variar por versão. O plugin precisa receber chamadas de áudio da DAW para prévia e gravação; se o host suspender plugins ociosos, mantenha a reprodução/monitoramento ativo.
-
-Para distribuir a terceiros, trate licenciamento JUCE (AGPLv3/comercial conforme sua licença), assinatura Developer ID e notarização Apple. Não há assinatura nem notarização nesta entrega. Para validar AU no Mac: `auval -v aufx Wnk1 Wnka`; valide também no FL Studio e com pluginval antes de distribuir.
-
-### Windows
-
-Instale Visual Studio 2022 com **Desktop development with C++** e CMake. No Developer PowerShell:
+Windows: Visual Studio 2022 com Desktop development with C++ e CMake:
 
 ```powershell
 cmake -S . -B build-win -A x64
@@ -41,11 +67,7 @@ cmake --build build-win --config Release --parallel 2
 ctest --test-dir build-win -C Release --output-on-failure
 ```
 
-Copie `build-win/WONKA_artefacts/Release/VST3/WONKA.vst3` para `C:\Program Files\Common Files\VST3\` e faça a busca de plugins na DAW. AU é exclusivo do macOS.
-
-### Linux / desenvolvimento na nuvem
-
-Debian/Ubuntu: CMake, g++, make, pkg-config, libasound2-dev, libx11-dev, libxext-dev, libxinerama-dev, libxrandr-dev, libxcursor-dev, libfreetype-dev, libfontconfig1-dev e libgl1-mesa-dev. Não é necessário WebKit/CURL; ambos estão desativados no plugin.
+Linux/Debian: CMake, g++, make, pkg-config, libasound2-dev, libx11-dev, libxext-dev, libxinerama-dev, libxrandr-dev, libxcursor-dev, libfreetype-dev, libfontconfig1-dev, libgl1-mesa-dev. WebKit/CURL não são usados pelo plugin.
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -53,7 +75,7 @@ cmake --build build --parallel 2
 ctest --test-dir build --output-on-failure
 ```
 
-Na máquina da entrega, as bibliotecas foram extraídas de pacotes Debian verificados para `/workspace/tools/sysroot`, sem acesso de administrador. Ferramentas em `/workspace/tools/python`; JUCE em `/workspace/deps/JUCE`. Use:
+Nesta máquina de desenvolvimento, dependências verificadas estão em `/workspace/tools/sysroot`, ferramentas em `/workspace/tools/python` e JUCE em `/workspace/deps/JUCE`:
 
 ```sh
 . /workspace/tools/activate-volta.sh
@@ -64,36 +86,6 @@ cmake --build /workspace/wonka/build --parallel 2
 ctest --test-dir /workspace/wonka/build --output-on-failure
 ```
 
-Para testar apenas os algoritmos, sem JUCE nem bibliotecas gráficas:
+Teste só DSP, sem JUCE: `cmake -S . -B build-core -DWONKA_PLUGIN=OFF`, depois build/ctest nesse diretório. O JUCE está fixado ao commit oficial `51a8a6d7aeae7326956d747737ccf1575e61e209`. Observe seu licenciamento AGPLv3/comercial antes de distribuir o produto. CI em `.github/workflows/build.yml` fornece os comandos macOS/Windows; resultado de CI não deve ser presumido.
 
-```sh
-cmake -S . -B build-core -DWONKA_PLUGIN=OFF
-cmake --build build-core
-ctest --test-dir build-core --output-on-failure
-```
-
-## Usar
-
-- **Abrir voz** ou arrastar WAV/AIFF mono/estéreo. Limite: 60 segundos, 8–192 kHz. A seleção usa os dois marcadores na forma de onda da fonte. A fonte inteira é preservada na sessão.
-- **Gravar** captura a entrada do slot de efeito, não abre diretamente o microfone do sistema. Roteie a voz ao Mixer, ative a reprodução/monitoramento e pare a gravação antes de salvar a sessão. A parada automática ocorre em 60 s. O áudio passa normalmente pela entrada, exceto durante a prévia.
-- **Reverse / Line** ou **Swell**; **Throw** repete o trecho selecionado. **Sugerir final** procura a última região ativa pelo envelope/silêncio; revise os marcadores. Não identifica palavras com garantia.
-- **Ouvir fonte / Ouvir resultado** escolhe a comparação e a forma de onda. **Ouvir / Parar** e espaço (quando o editor tem foco e o host entrega a tecla) controlam a prévia.
-- **Space**, **Length**, abas **Tone / Shape / Tremolo / Bars**, feedback e divisão ajustam o render. Mudanças interrompem a prévia e disparam render em segundo plano após breve debounce. Os valores de cada aba são independentes.
-- **Usar Bars** troca a autoridade da duração para Bars e desabilita Length; desligado, Length define segundos. A faixa atual é de 0,05 a 30 s para a duração principal/cauda Throw; durações musicais acima de 30 s são limitadas e o visor mostra a duração efetiva. BPM/compasso vêm do host quando disponíveis e habilitados, ou dos controles manuais. A indicação mostra segundos e compassos efetivos. O BPM suportado é 30–300.
-- A aba Tremolo oferece 1/4, 1/8, 1/16 sincronizados, ou 4 Hz livre. A intensidade fica no knob menor. **Volume** altera só a prévia. **Bypass** preserva a entrada da DAW, interrompendo a prévia. **Proteger clipping** usa teto rígido de ±0,999 no efeito, prévia e WAV; não é um limiter transparente. **Normalizar** é opcional e fica desligado por padrão (pico alvo 0,98).
-- Escolha 44,1/48/88,2/96 kHz e PCM24 ou float32. **Exportar WAV** abre o destino. **Arrastar WAV** é habilitado quando o arquivo do resultado terminou de ser gerado em segundo plano. Arraste o botão para a DAW; o host pode recusar. Use Exportar como alternativa. Formatos proprietários de regiões internas da DAW não são decodificados; file drops são suportados quando a DAW fornece caminhos reais WAV/AIFF.
-- Para Reverse, alinhe **o fim do arquivo completo** ao início da voz original na playlist. A duração WAV no visor inclui a cauda escolhida. Nenhum posicionamento automático na timeline é prometido.
-
-## Arquitetura e estado
-
-- `Source/Engine.*`: DSP offline independente de JUCE; algoritmos e conversão sinc com janela.
-- `Source/AudioIO.*`: importação, exportação atômica, picos da forma de onda e codificação do áudio da sessão.
-- `Source/Plugin.*`: integração JUCE, parâmetros, captura pré-alocada, jobs serializados e publicação de buffers imutáveis com hazard pointer. A thread de áudio não lê arquivos, não renderiza efeitos, não aloca buffers nem usa mutex. Volume tem rampa de 20 ms. Os outros controles são aplicados a um novo render enquanto a prévia está parada.
-- `Source/Editor.cpp`: interface JUCE redimensionável grafite/turquesa/violeta, knobs metálicos próprios, forma de onda real e drag/drop.
-- `tests/`: regressão DSP e integração do processador/IO/persistência. Não substituem validação de DAW.
-
-O estado da DAW incorpora o áudio fonte como PCM float em Base64, junto de modo, seleção, parâmetros e formato de exportação. Assim, excluir o arquivo original ou os temporários de drag não quebra a sessão. O resultado é reconstruído a partir da fonte e dos parâmetros ao reabrir. Isso aumenta o tamanho da sessão (até cerca de 123 MB em Base64 para 60 s estéreo a 192 kHz, além do XML); salvar pode custar tempo fora da thread de áudio. Capturas ainda em andamento não são incorporadas: pare e aguarde **Pronto** antes de salvar. Não há arquivos externos obrigatórios para relocalizar.
-
-Os WAVs de arraste ficam no diretório temporário do sistema, subpasta `WONKA-drag`; podem ser limpos depois de importar/copiar o áudio para o projeto da DAW. Não são a estratégia de persistência da sessão.
-
-[Algoritmos e parâmetros](docs/DSP.md) · [Validação e pendências](docs/VALIDATION.md)
+[Algoritmos próprios](docs/DSP.md) · [Revisão e referências](docs/REVIEW-0.2.md) · [Validação e limites](docs/VALIDATION.md)

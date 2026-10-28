@@ -1,5 +1,31 @@
 #include "Plugin.h"
 using namespace juce;
+static std::array<double, 22> renderKeyFor(const volta::Settings &s,
+                                           double sampleRate) {
+  return {double(s.mode),
+          double(s.variant),
+          double(s.division),
+          double(s.tremRate),
+          double(s.numerator),
+          double(s.denominator),
+          s.bpm,
+          s.length,
+          s.bars,
+          s.space,
+          s.tone,
+          s.shape,
+          s.tremolo,
+          s.feedback,
+          s.start,
+          s.end,
+          double(s.musical),
+          double(s.tail),
+          double(s.original),
+          double(s.normalise),
+          double(s.protect),
+          sampleRate};
+}
+
 AudioProcessorValueTreeState::ParameterLayout VoltaProcessor::layout() {
   AudioProcessorValueTreeState::ParameterLayout l;
   auto f = [&](const char *id, float lo, float hi, float def) {
@@ -41,13 +67,24 @@ AudioProcessorValueTreeState::ParameterLayout VoltaProcessor::layout() {
   b("bypass", false);
   return l;
 }
-VoltaProcessor::VoltaProcessor()
+VoltaProcessor::VoltaProcessor(File cacheDirectory)
     : AudioProcessor(
           BusesProperties()
               .withInput("Input", AudioChannelSet::stereo(), true)
               .withOutput("Output", AudioChannelSet::stereo(), true)),
       state(*this, nullptr, "WONKA", layout()) {
-  startTimerHz(10);
+  realtimeVolume = state.getRawParameterValue("volume");
+  realtimeProtect = state.getRawParameterValue("protect");
+  realtimeBypass = state.getRawParameterValue("bypass");
+  auto applicationData =
+      File::getSpecialLocation(File::userApplicationDataDirectory);
+#if JUCE_MAC
+  applicationData = applicationData.getChildFile("Application Support");
+#endif
+  cacheRoot = cacheDirectory == File{}
+                  ? applicationData.getChildFile("WonkaAudio/WONKA/Rendered")
+                  : cacheDirectory;
+  startTimerHz(20);
 }
 VoltaProcessor::~VoltaProcessor() {
   stopTimer();
@@ -98,6 +135,8 @@ void VoltaProcessor::prepareToPlay(double sr, int) {
   capture.setSize(2, (int)(60 * sr));
   recordState = 0;
   capturedCount = 0;
+  playGain.reset(sr, .01);
+  playGain.setCurrentAndTargetValue(0);
   volume.reset(sr, .02);
   volume.setCurrentAndTargetValue(param("volume"));
   playing = false;
@@ -106,6 +145,13 @@ void VoltaProcessor::processBlock(AudioBuffer<float> &buffer,
                                   MidiBuffer &midi) {
   ScopedNoDenormals nd;
   midi.clear();
+  ++audioCallbacks;
+  float in = 0;
+  for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+    in = std::max(in, buffer.getMagnitude(ch, 0, buffer.getNumSamples()));
+  inputPeak = in;
+  if (in >= 1)
+    inputClipped = true;
   bool got = false, gotMeter = false;
   if (auto *h = getPlayHead())
     if (auto p = h->getPosition()) {
@@ -140,13 +186,18 @@ void VoltaProcessor::processBlock(AudioBuffer<float> &buffer,
                        std::min(c, buffer.getNumChannels() - 1), 0, count);
     captured += count;
     capturedCount = captured;
-    if (captured == capture.getNumSamples())
+    if (captured == capture.getNumSamples()) {
+      recordingAtLimit = true;
       recordState = 4;
+    }
   }
   if (rs == 3)
     recordState = 4;
-  if (param("bypass") > .5f) {
+  if (realtimeBypass->load() > .5f) {
     playing = false;
+    outputPeak = in;
+    if (in >= 1)
+      outputClipped = true;
     return;
   }
   const Clip *clip;
@@ -158,10 +209,13 @@ void VoltaProcessor::processBlock(AudioBuffer<float> &buffer,
   if (command != seenCommand) {
     seenCommand = command;
     cursor = 0;
+    playGain.setCurrentAndTargetValue(0);
   }
-  if (playing.load() && clip && !clip->audio.empty()) {
+  playGain.setTargetValue(playing.load() ? 1.f : 0.f);
+  if ((playing.load() || playGain.isSmoothing()) && clip &&
+      !clip->audio.empty()) {
     buffer.clear();
-    volume.setTargetValue(param("volume"));
+    volume.setTargetValue(realtimeVolume->load());
     int n = (int)clip->audio[0].size();
     for (int i = 0; i < buffer.getNumSamples(); ++i) {
       if (cursor >= n) {
@@ -169,7 +223,8 @@ void VoltaProcessor::processBlock(AudioBuffer<float> &buffer,
         break;
       }
       size_t j = (size_t)cursor, k = std::min(j + 1, (size_t)n - 1);
-      float fraction = (float)(cursor - j), gain = volume.getNextValue();
+      float fraction = (float)(cursor - j),
+            gain = volume.getNextValue() * playGain.getNextValue();
       for (int c = 0; c < buffer.getNumChannels(); ++c) {
         float v = 0;
         if (buffer.getNumChannels() == 1 && clip->audio.size() == 2) {
@@ -181,13 +236,20 @@ void VoltaProcessor::processBlock(AudioBuffer<float> &buffer,
         }
         v *= gain;
         buffer.setSample(
-            c, i, param("protect") > .5f ? std::clamp(v, -.999f, .999f) : v);
+            c, i,
+            realtimeProtect->load() > .5f ? std::clamp(v, -.999f, .999f) : v);
       }
       cursor += clip->rate / hostRate.load();
     }
     position = std::min(1., cursor / n);
   }
   hazard.store(nullptr);
+  float out = 0;
+  for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+    out = std::max(out, buffer.getMagnitude(ch, 0, buffer.getNumSamples()));
+  outputPeak = out;
+  if (out >= .999f)
+    outputClipped = true;
 }
 void VoltaProcessor::queue(std::function<void()> fn) {
   ++activeJobs;
@@ -195,7 +257,12 @@ void VoltaProcessor::queue(std::function<void()> fn) {
     try {
       fn();
     } catch (const std::exception &e) {
-      setStatus("Erro: " + String(e.what()));
+      phase = Phase::Error;
+      dirtyRender = false;
+      dragPreparing = false;
+      if (recordState.load() == 5)
+        recordState = 0;
+      setStatus("Erro: " + String::fromUTF8(e.what()));
     }
     --activeJobs;
   });
@@ -234,48 +301,102 @@ void VoltaProcessor::load(std::shared_ptr<const Clip> c) {
     input = c;
     output.reset();
   }
+  sourceBlocked = false;
   ++revision;
   setStatus("Fonte carregada - renderizando");
   render();
 }
-void VoltaProcessor::importFile(File f) {
+void VoltaProcessor::rejectImport(String reason) {
+  sourceBlocked = true;
   ++renderGeneration;
+  stop();
+  {
+    std::lock_guard<std::mutex> lock(mutex);
+    output.reset();
+  }
+  dirtyRender = false;
+  phase = Phase::Error;
+  setStatus(std::move(reason));
+  ++revision;
+}
+void VoltaProcessor::importFile(File f) {
+  if (recordState.load() != 0) {
+    setStatus("Pare a gravacao antes de importar");
+    return;
+  }
+  recordingAtLimit = false;
+  sourceBlocked = true;
+  dirtyRender = false;
+  phase = Phase::Loading;
+  setStatus("Carregando: " + f.getFileName());
+  setParam("start", 0);
+  setParam("end", 1);
+  ++renderGeneration;
+  {
+    std::lock_guard<std::mutex> lock(mutex);
+    output.reset();
+  }
+  ++revision;
   stop();
   queue([this, f] { load(readAudioFile(f)); });
 }
 void VoltaProcessor::render() {
   dirtyRender = false;
+  if (sourceBlocked.load())
+    return;
   auto src = source();
   if (!src) {
     return;
   }
   auto s = settings();
+  const double renderRate = hostRate.load();
+  auto key = renderKeyFor(s, renderRate);
+  phase = Phase::Rendering;
   int gen = ++renderGeneration;
   setStatus("Processando...");
-  queue([this, src, s, gen] {
+  queue([this, src, s, gen, key, renderRate] {
     if (gen != renderGeneration.load())
       return;
     auto c = std::make_shared<Clip>();
-    c->rate = hostRate.load();
+    c->rate = renderRate;
     c->name = "WONKA_" + String(s.mode      ? "Throw"
                                 : s.variant ? "Swell"
                                             : "Reverse");
     auto a = volta::resample(src->audio, src->rate, c->rate);
     c->audio = volta::render(a, c->rate, s);
     c->buildPeaks();
-    if (gen != renderGeneration.load())
+    if (gen != renderGeneration.load() || key != signature()) {
+      dirtyRender = true;
       return;
+    }
     playing = false;
     {
       std::lock_guard<std::mutex> l(mutex);
       output = c;
+      outputKey = key;
     }
-    publish(c);
+    dirtyRender = false;
+    phase = Phase::Ready;
     ++revision;
-    setStatus("Pronto - " + String(c->audio[0].size() / c->rate, 2) + " s");
+    setStatus(String(recordingAtLimit.load()
+                         ? "Pronto - limite de gravacao 60 s atingido - "
+                         : "Pronto - ") +
+              String(c->audio[0].size() / c->rate, 2) + " s");
   });
 }
 void VoltaProcessor::preview(bool src) {
+  if (phase.load() == Phase::Loading) {
+    setStatus("Aguarde a importacao");
+    return;
+  }
+  if (!src && !resultIsCurrent()) {
+    setStatus("Atualizando resultado - aguarde");
+    return;
+  }
+  if (recordState.load() != 0) {
+    setStatus("Pare a gravacao antes de ouvir");
+    return;
+  }
   auto c = src ? source() : result();
   if (!c)
     return;
@@ -290,6 +411,13 @@ void VoltaProcessor::record() {
   if (recordState.load() != 0)
     return;
   stop();
+  if (phase.load() == Phase::Loading) {
+    setStatus("Aguarde a importacao antes de gravar");
+    return;
+  }
+  phase = Phase::Recording;
+  recordingAtLimit = false;
+  capturedCount = 0;
   recordState = 1;
   setStatus("Gravando entrada da DAW - max. 60 s");
 }
@@ -298,6 +426,7 @@ void VoltaProcessor::stopRecord() {
   if (r == 1) {
     int expect = 1;
     if (recordState.compare_exchange_strong(expect, 0)) {
+      phase = source() ? Phase::Ready : Phase::Empty;
       setStatus("Gravacao cancelada");
       return;
     }
@@ -309,6 +438,8 @@ void VoltaProcessor::serviceRecording() {
   int expected = 4;
   if (!recordState.compare_exchange_strong(expected, 5))
     return;
+  setParam("start", 0);
+  setParam("end", 1);
   queue([this] {
     std::lock_guard<std::mutex> lock(captureMutex);
     int n = capturedCount.load();
@@ -334,28 +465,71 @@ void VoltaProcessor::serviceRecording() {
 }
 void VoltaProcessor::exportFile(File file, int bits, double rate) {
   auto c = result();
-  if (!c) {
-    setStatus("Renderize primeiro");
+  if (!c || !resultIsCurrent() || recordState.load() != 0) {
+    setStatus("Aguarde o render atual antes de exportar");
     return;
   }
   bool protect = param("protect") > .5f;
   queue([this, file, bits, rate, c, protect] {
+    if (!resultIsCurrent() || result() != c) {
+      setStatus("Render alterado - exportacao cancelada");
+      return;
+    }
     writeAudioFile(*c, file, bits, rate, protect);
+    if (resultIsCurrent())
+      phase = Phase::Ready;
     setStatus("WAV salvo: " + file.getFullPathName());
   });
 }
-void VoltaProcessor::preset(int i) {
-  setParam("mode", i >= 3 ? 1 : 0);
-  setParam("variant", i == 2 ? 1 : 0);
-  setParam("length", i == 0 ? 1 : i == 2 ? 8 : 4);
-  setParam("space", i == 0 ? .25f : .8f);
-  setParam("tone", i == 4 ? .15f : .6f);
-  setParam("feedback", i == 4 ? .7f : .5f);
-  setParam("division", i == 3 ? 2 : 1);
-  setParam("musical", 0);
-  setParam("shape", .5);
-  setParam("tremolo", 0);
+void VoltaProcessor::preset(int index) {
+  const auto &values = volta::presets();
+  const int i = std::clamp(index, 0, (int)values.size() - 1);
+  const auto &v = values[i];
+  setParam("mode", (float)v.mode);
+  setParam("variant", (float)v.variant);
+  setParam("division", (float)v.division);
+  setParam("length", v.length);
+  setParam("space", v.space);
+  setParam("tone", v.tone);
+  setParam("shape", v.shape);
+  setParam("tremolo", v.tremolo);
+  setParam("feedback", v.feedback);
+  setParam("bars", v.bars);
+  setParam("musical", v.musical ? 1.f : 0.f);
+  setParam("tail", 1);
+  setParam("original", 0);
+  setParam("normalise", 0);
+  setParam("protect", 1);
+  setParam("tremrate", 1);
+  state.state.setProperty("preset", i + 1, nullptr);
   render();
+}
+bool VoltaProcessor::presetModified() const {
+  int index = (int)state.state.getProperty("preset", 1) - 1;
+  if (index < 0 || index >= 17)
+    return true;
+  const auto &v = volta::presets()[index];
+  const std::pair<const char *, float> fields[] = {
+      {"mode", (float)v.mode},
+      {"variant", (float)v.variant},
+      {"division", (float)v.division},
+      {"length", v.length},
+      {"space", v.space},
+      {"tone", v.tone},
+      {"shape", v.shape},
+      {"tremolo", v.tremolo},
+      {"feedback", v.feedback},
+      {"bars", v.bars},
+      {"musical", v.musical ? 1.f : 0.f},
+      {"tail", 1},
+      {"original", 0},
+      {"normalise", 0},
+      {"protect", 1},
+      {"tremrate", 1}};
+  for (const auto &f : fields)
+    if (std::abs(param(f.first) - f.second) > .0001f)
+      return true;
+  return false;
 }
 void VoltaProcessor::getStateInformation(MemoryBlock &block) {
   auto tree = state.copyState();
@@ -369,6 +543,7 @@ void VoltaProcessor::getStateInformation(MemoryBlock &block) {
 }
 void VoltaProcessor::setStateInformation(const void *data, int size) {
   ++renderGeneration;
+  sourceBlocked = true;
   auto xml = getXmlFromBinary(data, size);
   if (!xml || !xml->hasTagName("WONKA")) {
     setStatus("Sessao invalida");
@@ -397,6 +572,9 @@ void VoltaProcessor::setStateInformation(const void *data, int size) {
     }
     publish(nullptr);
     ++revision;
+    phase = Phase::Empty;
+    sourceBlocked = false;
+    dirtyRender = false;
     setStatus("Abra ou arraste WAV / AIFF");
   }
 }
@@ -404,48 +582,77 @@ AudioProcessor *JUCE_CALLTYPE createPluginFilter() {
   return new VoltaProcessor();
 }
 
+VoltaProcessor::Signature VoltaProcessor::signature() const {
+  return renderKeyFor(settings(), hostRate.load());
+}
+
+bool VoltaProcessor::resultIsCurrent() const {
+  const auto key = signature();
+  std::lock_guard<std::mutex> lock(mutex);
+  return !sourceBlocked.load() && output && input && key == outputKey &&
+         phase.load() != Phase::Loading;
+}
+File VoltaProcessor::preparedDragFile(int bits, double rate) const {
+  if (!resultIsCurrent())
+    return {};
+  std::lock_guard<std::mutex> lock(mutex);
+  return output == dragClip && dragKey == outputKey && bits == dragBits &&
+                 rate == dragRate
+             ? dragFile
+             : File{};
+}
+void VoltaProcessor::prepareDragFile(int bits, double rate) {
+  if (!resultIsCurrent() || recordState.load() != 0 || dragPreparing.load())
+    return;
+  if (preparedDragFile(bits, rate).existsAsFile())
+    return;
+  auto c = result();
+  auto key = signature();
+  {
+    std::lock_guard<std::mutex> lock(mutex);
+    if (dragAttempt == c && attemptedBits == bits && attemptedRate == rate)
+      return;
+    dragAttempt = c;
+    attemptedBits = bits;
+    attemptedRate = rate;
+  }
+  dragPreparing = true;
+  const bool protect = param("protect") > .5f;
+  queue([this, c, key, bits, rate, protect] {
+    if (!resultIsCurrent() || result() != c) {
+      dragPreparing = false;
+      return;
+    }
+    auto made = cacheRoot.createDirectory();
+    if (made.failed())
+      throw std::runtime_error(
+          ("Cache WAV: " + made.getErrorMessage()).toStdString());
+    auto file =
+        cacheRoot.getChildFile(c->name + "_" + Uuid().toString() + ".wav");
+    writeAudioFile(*c, file, bits, rate, protect);
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+      dragClip = c;
+      dragFile = file;
+      dragKey = key;
+      dragBits = bits;
+      dragRate = rate;
+    }
+    dragPreparing = false;
+  });
+}
 void VoltaProcessor::timerCallback() {
   serviceRecording();
-  auto s = settings();
-  auto src = source();
-  const bool newSource = src != lastAutoSource;
-  if (src && s.mode == 1 &&
-      ((newSource && src->autoSelect) ||
-       (!newSource && sawMode && lastAutoMode == 0))) {
-    setParam("start", (float)src->suggested.first);
-    setParam("end", (float)src->suggested.second);
-    s = settings();
-  }
-  lastAutoSource = src;
-  lastAutoMode = s.mode;
-  sawMode = true;
-  std::vector<double> key = {double(s.mode),
-                             double(s.variant),
-                             double(s.division),
-                             double(s.tremRate),
-                             double(s.numerator),
-                             double(s.denominator),
-                             s.bpm,
-                             s.length,
-                             s.bars,
-                             s.space,
-                             s.tone,
-                             s.shape,
-                             s.tremolo,
-                             s.feedback,
-                             s.start,
-                             s.end,
-                             double(s.musical),
-                             double(s.tail),
-                             double(s.original),
-                             double(s.normalise),
-                             double(s.protect),
-                             hostRate.load()};
+  if (sourceBlocked.load() || recordState.load() != 0)
+    return;
+  const auto key = signature();
   if (key != lastRenderKey) {
     lastRenderKey = key;
     pendingTicks = 3;
-    if (source())
+    if (source()) {
       dirtyRender = true;
+      phase = Phase::Rendering;
+    }
     stop();
   }
   if ((pendingTicks > 0 && --pendingTicks == 0 ||

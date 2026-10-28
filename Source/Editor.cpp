@@ -1,4 +1,7 @@
 #include "Plugin.h"
+#if WONKA_HAS_LOGO
+#include <BinaryData.h>
+#endif
 using namespace juce;
 namespace {
 class Metal final : public LookAndFeel_V4 {
@@ -53,6 +56,11 @@ public:
         (on ? Colour(0xff8ae5d9) : Colours::white).withAlpha(on ? .5f : .2f));
     g.drawRoundedRectangle(r.reduced(1), 7, 1);
   }
+  Font getComboBoxFont(ComboBox &) override { return Font(FontOptions(11.f)); }
+  void positionComboBoxText(ComboBox &box, Label &label) override {
+    label.setBounds(3, 1, box.getWidth() - 18, box.getHeight() - 2);
+    label.setFont(getComboBoxFont(box));
+  }
   void drawComboBox(Graphics &g, int width, int height, bool down, int, int,
                     int, int, ComboBox &) override {
     auto r = Rectangle<float>(1, 1, (float)width - 2, (float)height - 2);
@@ -64,16 +72,16 @@ public:
     g.setColour(Colours::white.withAlpha(down ? .25f : .11f));
     g.drawRoundedRectangle(r, 7, 1);
     Path arrow;
-    arrow.startNewSubPath(width - 21.f, height * .43f);
-    arrow.lineTo(width - 16.f, height * .58f);
-    arrow.lineTo(width - 11.f, height * .43f);
+    arrow.startNewSubPath(width - 14.f, height * .43f);
+    arrow.lineTo(width - 10.f, height * .58f);
+    arrow.lineTo(width - 6.f, height * .43f);
     g.setColour(Colour(0xffa9bac8));
     g.strokePath(arrow, PathStrokeType(1.5f));
   }
   void drawRotarySlider(Graphics &g, int x, int y, int w, int h, float pos,
                         float start, float end, Slider &) override {
-    auto r =
-        Rectangle<float>((float)x, (float)y, (float)w, (float)h).reduced(18);
+    auto r = Rectangle<float>((float)x, (float)y, (float)w, (float)h)
+                 .reduced(w < 100 ? 14.f : 17.f);
     float d = std::min(r.getWidth(), r.getHeight());
     r = r.withSizeKeepingCentre(d, d);
     auto c = r.getCentre();
@@ -124,42 +132,101 @@ public:
     g.drawLine({base, tip}, 3);
   }
 };
-class Wave final : public Component {
+class RoundButton final : public TextButton {
+public:
+  bool recording = false, active = false;
+  void paintButton(Graphics &g, bool hover, bool down) override {
+    auto r = getLocalBounds().toFloat().reduced(2);
+    g.setGradientFill(ColourGradient(
+        Colour(0xff5b626b), 0, 0, Colour(0xff10141b), 0, r.getBottom(), false));
+    g.fillEllipse(r);
+    g.setColour(Colours::black.withAlpha(.8f));
+    g.fillEllipse(r.reduced(2));
+    g.setColour((recording ? Colour(0xffec5576) : Colour(0xff87d9db))
+                    .withAlpha(isEnabled() ? 1.f : .22f));
+    auto c = r.getCentre();
+    if (active)
+      g.fillRoundedRectangle(c.x - 4, c.y - 4, 8, 8, 2);
+    else if (recording)
+      g.fillEllipse(c.x - 4, c.y - 4, 8, 8);
+    else {
+      Path p;
+      p.addTriangle(c.x - 3, c.y - 5, c.x + 5, c.y, c.x - 3, c.y + 5);
+      g.fillPath(p);
+    }
+    if (hover || down) {
+      g.setColour(Colours::white.withAlpha(.18f));
+      g.drawEllipse(r, 1);
+    }
+  }
+};
+class Wave final : public Component,
+                   public FileDragAndDropTarget,
+                   public DragAndDropTarget {
 public:
   VoltaProcessor &p;
-  bool processed = false;
   std::shared_ptr<const Clip> clip;
-  std::function<void()> changed;
+  bool sourceView = false, hover = false;
   int handle = 0;
-  explicit Wave(VoltaProcessor &proc) : p(proc) {}
+  bool dragged = false;
+  std::function<void()> open;
+  std::function<void(const StringArray &)> dropped;
+  std::function<File()> prepared;
+  explicit Wave(VoltaProcessor &proc) : p(proc) {
+    setMouseCursor(MouseCursor::PointingHandCursor);
+  }
+  Rectangle<int> audioArea() const {
+    return getLocalBounds().reduced(10).withTrimmedTop(25).withTrimmedBottom(
+        37);
+  }
   void paint(Graphics &g) override {
     auto r = getLocalBounds().toFloat();
     g.setGradientFill(ColourGradient(
-        Colour(0xff030507), 0, 0, Colour(0xff22262e), 0, r.getBottom(), false));
-    g.fillRoundedRectangle(r, 16);
-    g.setColour(Colour(0xff08090c));
-    g.fillRoundedRectangle(r.reduced(5), 12);
-    g.setColour(Colours::white.withAlpha(.14f));
-    g.drawRoundedRectangle(r.reduced(1), 16, 1);
-    g.setColour(Colours::black.withAlpha(.85f));
-    g.drawRoundedRectangle(r.reduced(4), 13, 3);
-    for (int y = 10; y < getHeight() - 10; y += 3) {
-      g.setColour(Colours::white.withAlpha(.012f));
-      g.drawHorizontalLine(y, 10.f, getWidth() - 10.f);
+        Colour(0xff05070b), 0, 0, Colour(0xff41464f), 0, r.getBottom(), false));
+    g.fillRoundedRectangle(r, 13);
+    g.setColour(Colour(0xff090d13));
+    g.fillRoundedRectangle(r.reduced(3), 10);
+    g.setColour(Colour(0xff667383).withAlpha(hover ? .8f : .25f));
+    g.drawRoundedRectangle(r.reduced(1), 13, 1);
+    for (int y = 6; y < getHeight() - 6; y += 3) {
+      g.setColour(Colours::white.withAlpha(.008f));
+      g.drawHorizontalLine(y, 6, (float)getWidth() - 6);
+    }
+    const auto phase = p.phase.load();
+    if (phase == VoltaProcessor::Phase::Loading ||
+        phase == VoltaProcessor::Phase::Rendering) {
+      g.setColour(Colour(0xff2e3543));
+      g.fillRect(12, 29, getWidth() - 24, 2);
+      float travel = (Time::getMillisecondCounter() % 1400) / 1400.f;
+      g.setColour(Colour(0xff7cdbd2));
+      g.fillRect(12 + roundToInt(travel * (getWidth() - 62)), 29, 38, 2);
     }
     if (!clip || clip->audio.empty()) {
-      g.setColour(Colour(0xffa8b4c7));
-      g.setFont(20);
-      g.drawText("ARRASTE UMA VOZ AQUI", getLocalBounds(),
+      g.setColour(Colour(0xffe1e7ec));
+      g.setFont(14);
+      g.drawText("Arraste uma voz aqui",
+                 getLocalBounds().reduced(10).translated(0, -8),
                  Justification::centred);
+      g.setColour(Colour(0xff8592a4));
+      g.setFont(10);
+      g.drawText("WAV / AIFF  -  clique para abrir", 15, getHeight() / 2 + 12,
+                 getWidth() - 30, 20, Justification::centred);
       return;
     }
-    auto area = getLocalBounds().reduced(12, 28);
-    int n = (int)clip->audio[0].size();
+    auto area = audioArea();
     int lanes = (int)clip->audio.size();
+    g.setColour(Colour(0xff566274).withAlpha(.3f));
+    g.drawHorizontalLine(area.getCentreY(), (float)area.getX(),
+                         (float)area.getRight());
+    float maxPeak = 0;
+    for (const auto &channel : clip->peaks)
+      for (float value : channel)
+        maxPeak = std::max(maxPeak, std::abs(value));
+    // Display-only scaling. Samples and export gain are never normalised here.
+    float displayGain = maxPeak > .00001f ? std::min(8.f, .9f / maxPeak) : 1.f;
     for (int c = 0; c < lanes; ++c) {
       float mid = area.getY() + area.getHeight() * (c + .5f) / lanes,
-            amp = area.getHeight() * .44f / lanes;
+            amp = area.getHeight() * .43f / lanes;
       for (int x = 0; x < area.getWidth(); ++x) {
         int b = x * 2048 / area.getWidth(),
             e = std::min(2048,
@@ -169,155 +236,289 @@ public:
           hi = std::max(hi, clip->peaks[c][i * 2 + 1]);
           lo = std::min(lo, clip->peaks[c][i * 2]);
         }
-        g.setColour(processed ? Colour(0xffaa8cf4) : Colour(0xff62ddd0));
-        g.drawVerticalLine(area.getX() + x, mid - hi * amp, mid - lo * amp + 1);
+        float f = (float)x / area.getWidth();
+        g.setColour(Colour(0xffa58bdf).interpolatedWith(Colour(0xff70dfcf), f));
+        g.drawVerticalLine(area.getX() + x, mid - hi * amp * displayGain,
+                           mid - lo * amp * displayGain + 1);
       }
     }
-    if (!processed) {
+    if (sourceView) {
       float b = area.getX() + p.param("start") * area.getWidth(),
             e = area.getX() + p.param("end") * area.getWidth();
-      g.setColour(Colour(0xffaa8cf4).withAlpha(.15f));
+      g.setColour(Colour(0xffa78bdc).withAlpha(.14f));
       g.fillRect(b, (float)area.getY(), e - b, (float)area.getHeight());
-      g.setColour(Colour(0xffe3e7ef));
-      g.drawVerticalLine((int)b, (float)area.getY(), (float)area.getBottom());
-      g.drawVerticalLine((int)e, (float)area.getY(), (float)area.getBottom());
-      g.fillRoundedRectangle(b - 4, area.getCentreY() - 18.f, 8, 36, 3);
-      g.fillRoundedRectangle(e - 4, area.getCentreY() - 18.f, 8, 36, 3);
+      for (float x : {b, e}) {
+        g.setColour(Colour(0xffc7cfd9));
+        g.drawVerticalLine((int)x, (float)area.getY(), (float)area.getBottom());
+        g.fillRoundedRectangle(x - 3, area.getCentreY() - 13.f, 6, 26, 2);
+      }
+    } else {
+      g.setColour(Colour(0xff72daca).withAlpha(.6f));
+      g.drawVerticalLine(area.getRight() - 1, (float)area.getY(),
+                         (float)area.getBottom());
     }
     if (p.playing) {
-      g.setColour(Colours::white);
+      g.setColour(Colours::white.withAlpha(.9f));
       g.drawVerticalLine(area.getX() +
                              (int)(p.position.load() * area.getWidth()),
                          (float)area.getY(), (float)area.getBottom());
     }
-    g.setColour(Colour(0xffb9c5d7));
-    g.setFont(13);
-    g.drawText((processed ? "RESULTADO  " : "FONTE  ") + clip->name + "  |  " +
-                   String(n / clip->rate, 2) + " s",
-               12, 4, getWidth() - 24, 20, Justification::centredLeft);
+    g.setColour(Colour(0xff8d9aaa));
+    g.setFont(9);
+    g.drawFittedText(clip->name, 12, getHeight() - 47, getWidth() - 24, 12,
+                     Justification::centredLeft, 1);
   }
   void mouseDown(const MouseEvent &e) override {
-    if (processed || !clip)
-      return;
-    float v = jlimit(0.f, 1.f, (e.position.x - 12) / (getWidth() - 24));
-    handle =
-        std::abs(v - p.param("start")) < std::abs(v - p.param("end")) ? 1 : 2;
-    mouseDrag(e);
-  }
-  void mouseDrag(const MouseEvent &e) override {
-    if (!handle || processed)
-      return;
-    float v = jlimit(0.f, 1.f, (e.position.x - 12) / (getWidth() - 24));
-    if (handle == 1)
-      p.setParam("start", std::min(v, p.param("end") - .0001f));
-    else
-      p.setParam("end", std::max(v, p.param("start") + .0001f));
-    repaint();
-  }
-  void mouseUp(const MouseEvent &) override {
-    if (handle && changed)
-      changed();
     handle = 0;
+    dragged = false;
+    if (!clip || !sourceView)
+      return;
+    auto a = audioArea();
+    float b = a.getX() + p.param("start") * a.getWidth(),
+          end = a.getX() + p.param("end") * a.getWidth();
+    if (std::abs(e.position.x - b) < 10)
+      handle = 1;
+    else if (std::abs(e.position.x - end) < 10)
+      handle = 2;
   }
-};
-class DragButton : public TextButton {
-public:
-  DragButton() : TextButton("Arrastar WAV") {}
-  File file;
   void mouseDrag(const MouseEvent &e) override {
-    TextButton::mouseDrag(e);
-    if (e.getDistanceFromDragStart() > 5 && file.existsAsFile())
+    if (e.getDistanceFromDragStart() < 4)
+      return;
+    if (handle) {
+      dragged = true;
+      auto a = audioArea();
+      float v = jlimit(0.f, 1.f, (e.position.x - a.getX()) / a.getWidth());
+      if (handle == 1)
+        p.setParam("start", std::min(v, p.param("end") - .0001f));
+      else
+        p.setParam("end", std::max(v, p.param("start") + .0001f));
+      p.stop();
+      repaint();
+      return;
+    }
+    if (dragged)
+      return;
+    dragged = true;
+    if (sourceView) {
+      p.setStatus(p.resultIsCurrent()
+                      ? "Desative Vocal para arrastar o resultado"
+                      : "Resultado sendo atualizado - aguarde");
+      return;
+    }
+    auto file = prepared ? prepared() : File{};
+    if (file.existsAsFile())
       DragAndDropContainer::performExternalDragDropOfFiles(
           {file.getFullPathName()}, false, this);
+    else
+      p.setStatus("Aguarde o WAV atual ficar pronto para arrastar");
+  }
+  void mouseUp(const MouseEvent &) override {
+    if (!dragged && !handle && open)
+      open();
+    handle = 0;
+  }
+  bool isInterestedInFileDrag(const StringArray &files) override {
+    return !files.isEmpty();
+  }
+  void fileDragEnter(const StringArray &, int, int) override {
+    hover = true;
+    repaint();
+  }
+  void fileDragExit(const StringArray &) override {
+    hover = false;
+    repaint();
+  }
+  void filesDropped(const StringArray &files, int, int) override {
+    hover = false;
+    if (dropped)
+      dropped(files);
+    repaint();
+  }
+  StringArray descriptions(const SourceDetails &d) const {
+    StringArray files;
+    if (auto *a = d.description.getArray()) {
+      for (auto &v : *a)
+        files.add(v.toString());
+    } else
+      files.add(d.description.toString());
+    return files;
+  }
+  bool isInterestedInDragSource(const SourceDetails &d) override {
+    for (auto f : descriptions(d))
+      if (fileFromDrop(f).hasFileExtension("wav;aif;aiff"))
+        return true;
+    return false;
+  }
+  void itemDropped(const SourceDetails &d) override {
+    if (dropped)
+      dropped(descriptions(d));
   }
 };
-class Editor final : public AudioProcessorEditor,
-                     public FileDragAndDropTarget,
-                     private Timer {
+class Meter final : public Component, public SettableTooltipClient {
+public:
+  VoltaProcessor &p;
+  float in = -100, out = -100;
+  explicit Meter(VoltaProcessor &processor) : p(processor) {}
+  void update(bool audioActive) {
+    auto db = [](float v) { return Decibels::gainToDecibels(v, -100.f); };
+    in = std::max(audioActive ? db(p.inputPeak.load()) : -100.f, in - 2.8f);
+    out = std::max(audioActive ? db(p.outputPeak.load()) : -100.f, out - 2.8f);
+    repaint();
+  }
+  void paint(Graphics &g) override {
+    for (int lane = 0; lane < 2; ++lane) {
+      float value = lane ? out : in;
+      int y = lane * 13;
+      g.setFont(9);
+      g.setColour(Colour(0xff8f9cae));
+      g.drawText(lane ? "out" : "in", 0, y, 20, 12, Justification::centredLeft);
+      for (int i = 0; i < 49; ++i) {
+        float threshold = -60 + i * 60.f / 49;
+        g.setColour(
+            value > threshold
+                ? (i > 45 ? Colour(0xffea6d88)
+                          : Colour(0xff938cc6)
+                                .interpolatedWith(Colour(0xff6ce2d0), i / 49.f))
+                : Colour(0xff363941));
+        g.fillRect(23 + i * 5, y + 4, 3, 4);
+      }
+      bool clipped = lane ? p.outputClipped.load() : p.inputClipped.load();
+      g.setColour(clipped ? Colour(0xfff47a8e) : Colour(0xff8f9cae));
+      g.drawText(value <= -99 ? "-inf" : String(value, 1), 274, y, 44, 12,
+                 Justification::centredRight);
+      if (clipped)
+        g.fillEllipse(322.f, y + 4.f, 4, 4);
+    }
+  }
+  void mouseDown(const MouseEvent &) override {
+    p.inputClipped = false;
+    p.outputClipped = false;
+  }
+};
+class Options final : public Component {
+public:
+  void paint(Graphics &g) override {
+    g.setColour(Colour(0xff151a22));
+    g.fillRoundedRectangle(getLocalBounds().toFloat(), 12);
+    g.setColour(Colour(0xff495160));
+    g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(1), 12, 1);
+    g.setFont(10);
+    g.setColour(Colour(0xffb3becd));
+    for (auto item : std::initializer_list<std::pair<const char *, Point<int>>>{
+             {"BPM manual", {8, 30}},
+             {"Compasso", {174, 30}},
+             {"Feedback", {8, 86}},
+             {"Delay", {174, 86}},
+             {"Volume previa", {8, 142}},
+             {"Tremolo rate", {174, 142}}})
+      g.drawText(item.first, item.second.x, item.second.y, 140, 13,
+                 Justification::centredLeft);
+  }
+};
+class Content final : public Component,
+                      public FileDragAndDropTarget,
+                      private Timer {
+public:
   VoltaProcessor &p;
   Metal metal;
   Wave wave;
-  TextButton open{"Abrir voz"}, rec{"Gravar"}, play{"Ouvir / Parar"},
-      compare{"Ouvir fonte"}, save{"Exportar WAV"}, suggest{"Sugerir final"};
-  DragButton drag;
-  ComboBox mode, variant, division, presets, scale, tab, rate, bits, denom,
-      tremRate;
-  std::array<TextButton, 4> tabButtons;
-  std::array<TextButton, 2> modeButtons;
-  ToggleButton sync{"BPM do host"}, musical{"Usar Bars"}, tail{"Incluir cauda"},
+  Meter meters;
+  Options options;
+  RoundButton recordButton, playButton;
+  TextButton prev{"<"}, next{">"}, line{"Line"}, swell{"Swell"}, vocal{"Vocal"},
+      reverse{"<< Reverse"}, throwButton{"~ Throw"}, gear{"..."},
+      exportButton{"Salvar WAV"}, authority{"s"};
+  ComboBox presets, scale, division, denom, tremRate, rate, bits;
+  std::array<TextButton, 4> tabs;
+  Slider space, length, small, bpm, num, feedback, volume;
+  ToggleButton sync{"Sync host"}, musical{"Usar Bars"}, tail{"Cauda Reverse"},
       original{"Fonte + efeito"}, normalise{"Normalizar"},
       protect{"Proteger clipping"}, bypass{"Bypass"};
-  Slider space, length, small, volume, bpm, feedback, num;
+  Label info, status;
+  std::function<void(double)> resizeRequested;
+  String lastStatus;
+  int noticeTicks = 0;
+  bool sourceView = false, optionsOpen = false, chooserOpen = false;
+  int tabIndex = 0, presetId = -1;
+  uint64_t lastCallbacks = 0;
+  int idleTicks = 0;
+  std::unique_ptr<FileChooser> chooser;
   std::vector<std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment>>
-      sliders;
+      sliderAttachments;
   std::vector<std::unique_ptr<AudioProcessorValueTreeState::ComboBoxAttachment>>
-      combos;
+      comboAttachments;
   std::vector<std::unique_ptr<AudioProcessorValueTreeState::ButtonAttachment>>
-      buttons;
+      buttonAttachments;
   std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment>
       smallAttachment;
-  std::unique_ptr<FileChooser> chooser;
-  int lastRevision = -1, tabIndex = 0;
-  bool sourcePreview = false;
-  File dragFile;
-  std::shared_ptr<const Clip> dragClip;
-  Label status, durationLabel;
-
-public:
-  explicit Editor(VoltaProcessor &proc)
-      : AudioProcessorEditor(proc), p(proc), wave(proc) {
-    sourcePreview = (bool)p.state.state.getProperty("sourceView", false);
+  Image logo;
+  TooltipWindow tooltip{this, 650};
+  explicit Content(VoltaProcessor &processor)
+      : p(processor), wave(p), meters(p) {
     setLookAndFeel(&metal);
     setWantsKeyboardFocus(true);
-    setResizable(true, true);
-    setResizeLimits(760, 860, 1440, 1632);
-    setSize(900, 1020);
-    for (Component *c : std::initializer_list<Component *>{
-             &wave,     &open,    &rec,    &play,         &compare,   &save,
-             &suggest,  &drag,    &mode,   &variant,      &division,  &presets,
-             &scale,    &tab,     &rate,   &bits,         &denom,     &tremRate,
-             &sync,     &musical, &tail,   &original,     &normalise, &protect,
-             &bypass,   &space,   &length, &small,        &volume,    &bpm,
-             &feedback, &num,     &status, &durationLabel})
+    setSize(360, 640);
+#if WONKA_HAS_LOGO
+    int logoBytes = 0;
+    auto *logoData = BinaryData::getNamedResource(
+        BinaryData::namedResourceList[0], logoBytes);
+    logo = ImageCache::getFromMemory(logoData, logoBytes);
+#endif
+    for (auto *c : std::initializer_list<Component *>{
+             &wave,        &meters, &recordButton, &playButton, &prev,
+             &next,        &line,   &swell,        &vocal,      &reverse,
+             &throwButton, &gear,   &presets,      &scale,      &space,
+             &length,      &small,  &info,         &status,     &authority,
+             &bypass,      &options})
       addAndMakeVisible(c);
+    for (auto *c : std::initializer_list<Component *>{
+             &division, &denom, &tremRate, &rate, &bits, &bpm, &num, &feedback,
+             &volume, &sync, &musical, &tail, &original, &normalise, &protect,
+             &exportButton})
+      options.addAndMakeVisible(c);
     auto slider = [&](Slider &s, const char *id, bool rotary) {
       s.setSliderStyle(rotary ? Slider::RotaryHorizontalVerticalDrag
                               : Slider::LinearHorizontal);
-      s.setTextBoxStyle(Slider::TextBoxBelow, false, 80, 20);
-      s.setNumDecimalPlacesToDisplay(2);
-      sliders.push_back(
+      s.setTextBoxStyle(Slider::TextBoxBelow, false, 68, 17);
+      sliderAttachments.push_back(
           std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(
               p.state, id, s));
-      s.textFromValueFunction = [](double value) { return String(value, 2); };
+      s.textFromValueFunction = [](double v) { return String(v, 2); };
       s.updateText();
     };
     slider(space, "space", true);
     slider(length, "length", true);
-    slider(volume, "volume", false);
     slider(bpm, "bpm", false);
-    slider(feedback, "feedback", false);
     slider(num, "numerator", false);
-    auto combo = [&](ComboBox &c, const char *id, StringArray items) {
-      c.addItemList(items, 1);
-      combos.push_back(
+    slider(feedback, "feedback", false);
+    slider(volume, "volume", false);
+    space.textFromValueFunction = [](double v) {
+      return String(.25 + 5.75 * v, 2) + " s";
+    };
+    space.updateText();
+    length.textFromValueFunction = [](double v) { return String(v, 2) + " s"; };
+    length.updateText();
+    num.textFromValueFunction = [](double v) {
+      return String((int)std::round(v));
+    };
+    num.updateText();
+    volume.textFromValueFunction = [](double v) {
+      return v > 0 ? String(Decibels::gainToDecibels(v), 1) + " dB" : "-inf dB";
+    };
+    volume.updateText();
+    auto combo = [&](ComboBox &c, const char *id, StringArray values) {
+      c.addItemList(values, 1);
+      comboAttachments.push_back(
           std::make_unique<AudioProcessorValueTreeState::ComboBoxAttachment>(
               p.state, id, c));
     };
-    combo(tremRate, "tremrate", {"1/4", "1/8", "1/16", "4 Hz livre"});
-    combo(mode, "mode", {"REVERSE", "THROW"});
-    mode.setVisible(false);
-    for (int i = 0; i < 2; ++i) {
-      addAndMakeVisible(modeButtons[i]);
-      modeButtons[i].setButtonText(i == 0 ? "<<   REVERSE" : "~   THROW");
-      modeButtons[i].onClick = [this, i] { p.setParam("mode", (float)i); };
-    }
-    combo(variant, "variant", {"Line", "Swell"});
     combo(division, "division",
-          {"1/4", "1/8", "1/8 pontuada", "1/8 tercina", "1/16", "1/16 pontuada",
-           "1/16 tercina", "1/2"});
+          {"1/4", "1/8", "1/8 dotted", "1/8 triplet", "1/16", "1/16 dotted",
+           "1/16 triplet", "1/2"});
     combo(denom, "denominator", {"2", "4", "8", "16"});
+    combo(tremRate, "tremrate", {"1/4", "1/8", "1/16", "4 Hz free"});
     auto toggle = [&](ToggleButton &b, const char *id) {
-      buttons.push_back(
+      buttonAttachments.push_back(
           std::make_unique<AudioProcessorValueTreeState::ButtonAttachment>(
               p.state, id, b));
     };
@@ -328,133 +529,193 @@ public:
     toggle(normalise, "normalise");
     toggle(protect, "protect");
     toggle(bypass, "bypass");
-    presets.addItemList({"Reverse curto", "Reverse ambiente", "Swell longo",
-                         "Throw pontuado", "Ping-pong escuro"},
-                        1);
-    presets.setTextWhenNothingSelected("Presets WONKA");
-    presets.setSelectedId((int)p.state.state.getProperty("preset", 0),
-                          dontSendNotification);
+    for (const auto &preset : volta::presets())
+      presets.addItem(preset.name, presets.getNumItems() + 1);
     presets.onChange = [this] {
-      p.state.state.setProperty("preset", presets.getSelectedId(), nullptr);
-      p.preset(presets.getSelectedItemIndex());
+      if (presets.getSelectedId() > 0)
+        p.preset(presets.getSelectedItemIndex());
     };
-    scale.addItemList({"85%", "100%", "125%", "150%"}, 1);
-    scale.setSelectedId((int)p.state.state.getProperty("scale", 2),
-                        dontSendNotification);
+    prev.onClick = [this] { navigate(-1); };
+    next.onClick = [this] { navigate(1); };
+    scale.addItemList({"70%", "85%", "100%", "125%"}, 1);
+    scale.setSelectedId(3, dontSendNotification);
     scale.onChange = [this] {
-      p.state.state.setProperty("scale", scale.getSelectedId(), nullptr);
-      double v = scale.getSelectedId() == 1   ? .85
-                 : scale.getSelectedId() == 3 ? 1.25
-                 : scale.getSelectedId() == 4 ? 1.5
-                                              : 1;
-      setSize((int)(900 * v), (int)(1020 * v));
+      const double values[] = {.7, .85, 1., 1.25};
+      if (resizeRequested)
+        resizeRequested(values[std::max(0, scale.getSelectedItemIndex())]);
     };
-    const char *tabNames[] = {"Tone", "Shape", "Tremolo", "Bars"};
+    reverse.onClick = [this] {
+      p.setParam("mode", 0);
+      sourceView = false;
+    };
+    throwButton.onClick = [this] {
+      p.setParam("mode", 1);
+      sourceView = false;
+    };
+    line.onClick = [this] {
+      p.setParam("variant", 0);
+      sourceView = false;
+    };
+    swell.onClick = [this] {
+      p.setParam("variant", 1);
+      sourceView = false;
+    };
+    vocal.onClick = [this] {
+      sourceView = !sourceView;
+      p.stop();
+      p.state.state.setProperty("sourceView", sourceView, nullptr);
+      refresh();
+    };
+    const char *names[] = {"Tone", "Shape", "Tremolo", "Bars"};
     for (int i = 0; i < 4; ++i) {
-      addAndMakeVisible(tabButtons[i]);
-      tabButtons[i].setButtonText(tabNames[i]);
-      tabButtons[i].onClick = [this, i] { tab.setSelectedId(i + 1); };
+      addAndMakeVisible(tabs[i]);
+      tabs[i].setButtonText(names[i]);
+      tabs[i].onClick = [this, i] { attachSmall(i); };
     }
-    tab.setVisible(false);
-    tab.addItemList({"Tone", "Shape", "Tremolo", "Bars"}, 1);
-    tab.setSelectedId((int)p.state.state.getProperty("tab", 1),
-                      dontSendNotification);
-    tab.onChange = [this] {
-      p.state.state.setProperty("tab", tab.getSelectedId(), nullptr);
-      attachSmall();
-    };
-    attachSmall();
+    tabIndex = jlimit(0, 3, (int)p.state.state.getProperty("tab", 1) - 1);
+    attachSmall(tabIndex);
+    rate.addItemList({"44.1 kHz", "48 kHz", "88.2 kHz", "96 kHz"}, 1);
+    rate.setSelectedId(
+        jlimit(1, 4, (int)p.state.state.getProperty("exportRate", 2)),
+        dontSendNotification);
     bits.addItemList({"24-bit PCM", "32-bit float"}, 1);
-    bits.setSelectedId(1);
-    rate.addItemList({"44100 Hz", "48000 Hz", "88200 Hz", "96000 Hz"}, 1);
-    rate.setSelectedId((int)p.state.state.getProperty("exportRate", 2));
-    bits.setSelectedId((int)p.state.state.getProperty("exportBits", 1));
+    bits.setSelectedId(
+        jlimit(1, 2, (int)p.state.state.getProperty("exportBits", 1)),
+        dontSendNotification);
     rate.onChange = [this] {
       p.state.state.setProperty("exportRate", rate.getSelectedId(), nullptr);
-      dragClip.reset();
     };
     bits.onChange = [this] {
       p.state.state.setProperty("exportBits", bits.getSelectedId(), nullptr);
-      dragClip.reset();
     };
-    open.onClick = [this] { choose(false); };
-    save.onClick = [this] { choose(true); };
-    rec.onClick = [this] {
+    authority.onClick = [this] {
+      p.setParam("musical", p.param("musical") > .5f ? 0.f : 1.f);
+    };
+    gear.onClick = [this] {
+      optionsOpen = !optionsOpen;
+      refresh();
+      resized();
+      repaint();
+    };
+    recordButton.recording = true;
+    recordButton.onClick = [this] {
       if (p.recordState.load() == 0)
         p.record();
       else
         p.stopRecord();
     };
-    play.onClick = [this] { togglePlay(); };
-    compare.onClick = [this] {
-      sourcePreview = !sourcePreview;
-      p.state.state.setProperty("sourceView", sourcePreview, nullptr);
-      compare.setButtonText(sourcePreview ? "Ouvir resultado" : "Ouvir fonte");
-      p.stop();
-      lastRevision = -1;
+    playButton.onClick = [this] { togglePlay(); };
+    wave.open = [this] { choose(false); };
+    wave.dropped = [this](const StringArray &files) { acceptFiles(files); };
+    wave.prepared = [this] {
+      return p.preparedDragFile(exportBits(), exportRate());
     };
-    suggest.onClick = [this] {
-      if (auto c = p.source()) {
-        auto region = volta::suggest(c->audio);
-        p.setParam("start", (float)region.first);
-        p.setParam("end", (float)region.second);
-        sourcePreview = true;
-        lastRevision = -1;
-      }
-    };
-    wave.changed = [this] { p.stop(); };
-    status.setColour(Label::textColourId, Colour(0xffc3ccda));
-    durationLabel.setColour(Label::textColourId, Colour(0xff62ddd0));
-    if (scale.onChange)
-      scale.onChange();
-    timerCallback();
-    startTimerHz(20);
+    exportButton.onClick = [this] { choose(true); };
+    info.setFont(FontOptions(10));
+    info.setColour(Label::textColourId, Colour(0xffacb8c9));
+    info.setInterceptsMouseClicks(false, false);
+    status.setFont(FontOptions(9));
+    status.setColour(Label::textColourId, Colour(0xff8b99ad));
+    status.setInterceptsMouseClicks(false, false);
+    sourceView = (bool)p.state.state.getProperty("sourceView", false);
+    setTooltips();
+    resized();
+    refresh();
+    startTimerHz(25);
   }
-  ~Editor() override {
+  ~Content() override {
     stopTimer();
     setLookAndFeel(nullptr);
   }
-  void attachSmall() {
+  void setTooltips() {
+    wave.setTitle("Importar voz / arrastar resultado");
+    vocal.setTooltip("Comparar e selecionar a fonte original (interpretacao "
+                     "WONKA do botao Vocal)");
+    space.setTooltip("Space: tamanho, difusao e T60 do ambiente");
+    length.setTooltip(
+        "Length em segundos; s/bars escolhe a autoridade da duracao");
+    authority.setTooltip("Escolher segundos (Length) ou compassos (Bars)");
+    recordButton.setTooltip(
+        "Gravar entrada da DAW. Limite 60 s; o host precisa processar audio.");
+    gear.setTooltip("Opcoes de sync, exportacao e ganho");
+    presets.setTooltip("17 presets proprios; * indica alteracoes");
+    playButton.setTooltip(
+        "Ouvir/parar. Espaco funciona quando o editor recebe a tecla.");
+    meters.setTooltip(
+        "Entrada/saida dBFS. Clique para limpar indicadores de clipping.");
+  }
+  void attachSmall(int index) {
     smallAttachment.reset();
+    tabIndex = jlimit(0, 3, index);
+    p.state.state.setProperty("tab", tabIndex + 1, nullptr);
     const char *ids[] = {"tone", "shape", "tremolo", "bars"};
-    tabIndex = std::max(0, tab.getSelectedItemIndex());
-    for (int i = 0; i < 4; ++i)
-      tabButtons[i].setToggleState(i == tabIndex, dontSendNotification);
     small.setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
-    small.setTextBoxStyle(Slider::TextBoxBelow, false, 80, 20);
-    small.setNumDecimalPlacesToDisplay(2);
+    small.setTextBoxStyle(Slider::TextBoxBelow, false, 88, 17);
     smallAttachment =
         std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(
             p.state, ids[tabIndex], small);
-    small.textFromValueFunction = [](double value) { return String(value, 2); };
+    small.textFromValueFunction = [this](double value) {
+      if (tabIndex == 0) {
+        double hz = volta::toneFrequency(value, p.hostRate.load());
+        return hz >= 1000 ? String(hz / 1000, 1) + " kHz"
+                          : String(roundToInt(hz)) + " Hz";
+      }
+      if (tabIndex == 1)
+        return String(.2 + 3.8 * value, 2);
+      if (tabIndex == 2)
+        return String(roundToInt(value * 100)) + " %";
+      return String(value, 2) + " bars";
+    };
     small.updateText();
+    small.setTooltip(
+        tabIndex == 3 ? "Bars: duracao musical. Ative o botao bars sob Length."
+                      : "Editar apenas a aba selecionada");
+    for (int i = 0; i < 4; ++i)
+      tabs[i].setToggleState(i == tabIndex, dontSendNotification);
+  }
+  void navigate(int delta) {
+    int current =
+        jlimit(0, 16, (int)p.state.state.getProperty("preset", 1) - 1);
+    p.preset((current + delta + 17) % 17);
+  }
+  int exportBits() const { return bits.getSelectedId() == 2 ? 32 : 24; }
+  double exportRate() const {
+    const double values[] = {44100, 48000, 88200, 96000};
+    return values[jlimit(0, 3, rate.getSelectedItemIndex())];
   }
   void togglePlay() {
     if (p.playing)
       p.stop();
     else
-      p.preview(sourcePreview);
+      p.preview(sourceView);
   }
-  bool keyPressed(const KeyPress &k) override {
-    if (k == KeyPress::spaceKey) {
+  bool keyPressed(const KeyPress &key) override {
+    if (key == KeyPress::spaceKey) {
       togglePlay();
       return true;
     }
     return false;
   }
-  double exportRate() const {
-    const double rates[] = {44100, 48000, 88200, 96000};
-    return rates[std::max(0, rate.getSelectedItemIndex())];
-  }
   void choose(bool exporting) {
-    auto home = File::getSpecialLocation(File::userDocumentsDirectory);
-    auto target = home.getChildFile(
-        "WONKA_" + String(p.param("mode") > .5f ? "Throw" : "Reverse") +
-        ".wav");
+    if (chooserOpen)
+      return;
+    if (!exporting && p.recordState.load() != 0) {
+      p.setStatus("Pare a gravacao antes de importar");
+      return;
+    }
+    if (exporting && !p.resultIsCurrent()) {
+      p.setStatus("Aguarde o resultado atual antes de exportar");
+      return;
+    }
+    const auto home = File::getSpecialLocation(File::userDocumentsDirectory);
+    const auto target = home.getChildFile(
+        "WONKA_" + String(p.settings().mode ? "Throw" : "Reverse") + ".wav");
     chooser = std::make_unique<FileChooser>(
         exporting ? "Exportar WONKA" : "Abrir voz WAV / AIFF",
-        exporting ? target : home, exporting ? "*.wav" : "*.wav;*.aif;*.aiff");
-    Component::SafePointer<Editor> safe(this);
+        exporting ? target : home, exporting ? "*.wav" : "*.wav;*.aif;*.aiff",
+        true, false, this);
+    chooserOpen = true;
+    Component::SafePointer<Content> safe(this);
     chooser->launchAsync(
         exporting ? (FileBrowserComponent::saveMode |
                      FileBrowserComponent::canSelectFiles |
@@ -464,205 +725,268 @@ public:
         [safe, exporting](const FileChooser &fc) {
           if (!safe)
             return;
+          safe->chooserOpen = false;
           auto file = fc.getResult();
           if (file == File{})
             return;
           if (exporting)
             safe->p.exportFile(file.withFileExtension("wav"),
-                               safe->bits.getSelectedId() == 1 ? 24 : 32,
-                               safe->exportRate());
+                               safe->exportBits(), safe->exportRate());
           else
-            safe->import(file);
+            safe->importFile(file);
         });
   }
-  void import(File f) {
-    sourcePreview = true;
-    p.setParam("start", 0);
-    p.setParam("end", 1);
-    p.importFile(f);
+  void importFile(File file) {
+    sourceView = false;
+    p.state.state.setProperty("sourceView", false, nullptr);
+    p.importFile(file);
+    refresh();
+  }
+  void acceptFiles(const StringArray &files) {
+    for (const auto &item : files) {
+      auto file = fileFromDrop(item);
+      if (file.hasFileExtension("wav;aif;aiff")) {
+        importFile(file);
+        return;
+      }
+    }
+    p.rejectImport("Arraste WAV/AIFF do Finder; a regiao da DAW pode nao "
+                   "fornecer arquivo compativel");
   }
   bool isInterestedInFileDrag(const StringArray &files) override {
-    for (auto f : files)
-      if (File(f).hasFileExtension("wav;aif;aiff"))
-        return true;
-    return false;
+    return !files.isEmpty();
   }
   void filesDropped(const StringArray &files, int, int) override {
-    for (auto f : files)
-      if (File(f).hasFileExtension("wav;aif;aiff")) {
-        import(File(f));
-        break;
-      }
+    acceptFiles(files);
   }
-  void timerCallback() override {
-    compare.setButtonText(sourcePreview ? "Ouvir resultado" : "Ouvir fonte");
-    status.setText(p.status(), dontSendNotification);
-    rec.setButtonText(p.recordState.load() ? "Parar gravacao" : "Gravar");
-    auto s = p.settings();
-    for (int i = 0; i < 2; ++i)
-      modeButtons[i].setToggleState(s.mode == i, dontSendNotification);
-    auto out = p.result();
-    double actual =
-        out && !out->audio.empty() ? out->audio[0].size() / out->rate : 0;
-    double beats = volta::duration(s) * s.bpm / 60;
-    durationLabel.setText(
-        "Length: " + String(volta::duration(s), 2) + " s  /  " +
-            String(beats / (s.numerator * 4. / s.denominator), 2) +
-            " compassos  |  " + String(s.bpm, 1) + " BPM " +
-            String(s.numerator) + "/" + String(s.denominator) + "  " +
-            (p.param("sync") > .5f && p.hostTempo ? "host" : "manual") +
-            "  |  WAV: " + String(actual, 2) + " s",
-        dontSendNotification);
-    tremRate.setVisible(tabIndex == 2);
+  void refresh() {
+    const auto s = p.settings();
+    auto input = p.source(), output = p.result();
+    const bool ready = p.resultIsCurrent();
+    bool hasSource = input && !input->audio.empty();
+    wave.sourceView = sourceView || !ready;
+    wave.clip = wave.sourceView ? input : output;
+    line.setToggleState(s.variant == 0, dontSendNotification);
+    swell.setToggleState(s.variant == 1, dontSendNotification);
+    vocal.setToggleState(sourceView, dontSendNotification);
+    reverse.setToggleState(s.mode == 0, dontSendNotification);
+    throwButton.setToggleState(s.mode == 1, dontSendNotification);
+    line.setVisible(s.mode == 0);
+    swell.setVisible(s.mode == 0);
+    vocal.setEnabled(hasSource);
+    playButton.setEnabled(hasSource &&
+                          p.phase.load() != VoltaProcessor::Phase::Loading &&
+                          p.recordState.load() == 0 && (sourceView || ready));
+    playButton.active = p.playing;
+    recordButton.active = p.recordState.load() != 0;
+    authority.setButtonText(s.musical ? "bars" : "s");
+    authority.setToggleState(s.musical, dontSendNotification);
+    length.setEnabled(!s.musical);
     tail.setEnabled(s.mode == 0);
     original.setEnabled(s.mode == 1);
-    length.setEnabled(!s.musical);
-    variant.setEnabled(s.mode == 0);
-    division.setEnabled(s.mode == 1);
     feedback.setEnabled(s.mode == 1);
-    save.setEnabled(out && !p.isBusy());
-    play.setEnabled(p.source() != nullptr && !p.isBusy());
-    if (lastRevision != p.revision.load()) {
-      lastRevision = p.revision.load();
-      wave.processed = !sourcePreview;
-      wave.clip = sourcePreview ? p.source() : out;
+    division.setEnabled(s.mode == 1);
+    exportButton.setEnabled(ready && p.recordState.load() == 0);
+    int selected = jlimit(1, 17, (int)p.state.state.getProperty("preset", 1));
+    if (presets.getSelectedId() != selected)
+      presets.setSelectedId(selected, dontSendNotification);
+    if (presetId > 0 && presetId != selected)
+      presets.changeItemText(presetId, volta::presets()[presetId - 1].name);
+    presetId = selected;
+    presets.changeItemText(selected, String(p.presetModified() ? "* " : "") +
+                                         volta::presets()[selected - 1].name);
+    presets.setSelectedId(selected, dontSendNotification);
+    String label;
+    if (hasSource) {
+      auto shown = wave.clip;
+      label = (wave.sourceView ? "Vocal"
+               : s.mode        ? "Throw"
+               : s.variant     ? "Swell"
+                               : "Line");
+      if (shown)
+        label +=
+            "  /  " + String(shown->audio[0].size() / shown->rate, 2) + " s";
+    } else
+      label = "Sem audio";
+    info.setText(label, dontSendNotification);
+    auto callbacks = p.audioCallbacks.load();
+    if (callbacks == lastCallbacks)
+      ++idleTicks;
+    else
+      idleTicks = 0;
+    lastCallbacks = callbacks;
+    meters.update(idleTicks < 5);
+    String message = p.status();
+    if (message != lastStatus) {
+      lastStatus = message;
+      noticeTicks = 50;
     }
-    if (out && out != dragClip && !p.isBusy()) {
-      dragClip = out;
-      auto folder = File::getSpecialLocation(File::tempDirectory)
-                        .getChildFile("WONKA-drag");
-      if (folder.createDirectory()) {
-        dragFile =
-            folder.getChildFile(out->name + "_" + Uuid().toString() + ".wav");
-        drag.file = File{};
-        p.exportFile(dragFile, bits.getSelectedId() == 1 ? 24 : 32,
-                     exportRate());
-      }
+    const bool showNotice = noticeTicks > 0 && !message.startsWith("Pronto");
+    if (noticeTicks > 0)
+      --noticeTicks;
+    if (p.recordState.load() != 0)
+      message = "Gravando " + String(p.recordingSeconds(), 1) + " / 60 s";
+    if (p.playing) {
+      message =
+          idleTicks > 20
+              ? "Host sem audio: ative transporte / desative Smart disable"
+              : "Reproduzindo " + String(sourceView ? "Vocal" : "resultado");
+    } else if (ready && p.phase.load() == VoltaProcessor::Phase::Ready &&
+               !p.recordingAtLimit.load() && !showNotice) {
+      double total = output->audio[0].size() / output->rate;
+      double bars = total * s.bpm / 60 / (s.numerator * 4. / s.denominator);
+      message = String(total, 2) + " s / " + String(bars, 2) + " bars - " +
+                String(s.bpm, 1) + " BPM";
+      if (s.musical &&
+          s.bars * s.numerator * 4.0 / s.denominator * 60 / s.bpm > 30)
+        message = "Limite 30 s - " + message;
     }
-    if (dragFile.existsAsFile() && !p.isBusy())
-      drag.file = dragFile;
-    drag.setEnabled(drag.file.existsAsFile() && !p.isBusy());
+    status.setText(message, dontSendNotification);
+    status.setTooltip(p.status());
+    status.setColour(Label::textColourId,
+                     p.phase.load() == VoltaProcessor::Phase::Error
+                         ? Colour(0xfff18ba3)
+                         : Colour(0xff9ba9bc));
+    if (ready && !p.isBusy())
+      p.prepareDragFile(exportBits(), exportRate());
     wave.repaint();
   }
+  void timerCallback() override { refresh(); }
   void paint(Graphics &g) override {
-    g.fillAll(Colour(0xff090b10));
-    g.addTransform(
-        AffineTransform::scale(getWidth() / 900.f, getHeight() / 1020.f));
-    auto panel = Rectangle<float>(12, 10, 876, 1000);
-    g.setGradientFill(ColourGradient(Colour(0xff62636a), 12, 10,
-                                     Colour(0xff0b0d12), 888, 1010, false));
-    g.fillRoundedRectangle(panel, 25);
-    g.setGradientFill(ColourGradient(Colour(0xff36373d), 30, 15,
-                                     Colour(0xff1d1e24), 700, 1000, false));
-    g.fillRoundedRectangle(panel.reduced(3), 22);
-    for (int y = 18; y < 1000; y += 2) {
-      g.setColour(Colours::white.withAlpha(y % 4 ? .018f : .008f));
-      g.drawHorizontalLine(y, 22, 878);
+    g.fillAll(Colour(0xff0b0e13));
+    auto panel = getLocalBounds().toFloat().reduced(2);
+    g.setGradientFill(ColourGradient(Colour(0xff54565e), 0, 0,
+                                     Colour(0xff1a1c23), 350, 640, false));
+    g.fillRoundedRectangle(panel, 16);
+    g.setColour(Colour(0xff292c34));
+    g.fillRoundedRectangle(panel.reduced(2), 14);
+    for (int y = 5; y < 636; y += 2) {
+      g.setColour(Colours::white.withAlpha(y % 4 ? .016f : .006f));
+      g.drawHorizontalLine(y, 6, 354);
     }
-    auto inset = [&](Rectangle<float> r) {
-      g.setGradientFill(ColourGradient(Colour(0xff07080b), r.getX(), r.getY(),
-                                       Colour(0xff45464d), r.getRight(),
-                                       r.getBottom(), false));
-      g.fillRoundedRectangle(r, 15);
-      g.setColour(Colour(0xff1c1e24));
-      g.fillRoundedRectangle(r.reduced(2), 13);
-    };
-    inset({22, 93, 856, 52});
-    inset({22, 453, 856, 366});
-    for (auto point : {Point<float>(27, 25), Point<float>(873, 25),
-                       Point<float>(27, 997), Point<float>(873, 997)}) {
-      g.setColour(Colour(0xff090a0d));
-      g.fillEllipse(point.x - 7, point.y - 6, 14, 14);
-      g.setGradientFill(ColourGradient(Colour(0xff74767b), point.x - 5,
-                                       point.y - 5, Colour(0xff202126),
-                                       point.x + 5, point.y + 5, false));
-      g.fillEllipse(point.x - 5, point.y - 5, 10, 10);
-      g.setColour(Colour(0xff111216));
-      g.drawLine(point.x - 3, point.y + 2, point.x + 3, point.y - 2, 2);
+    g.setGradientFill(ColourGradient(Colour(0xffb3b5b9), 0, 3,
+                                     Colour(0xff737982), 360, 38, false));
+    g.fillRoundedRectangle(5, 4, 350, 34, 11);
+    if (logo.isValid())
+      g.drawImageWithin(logo, 12, 9, 58, 22,
+                        RectanglePlacement::centred |
+                            RectanglePlacement::onlyReduceInSize);
+    else {
+      g.setColour(Colour(0xff10141a));
+      g.setFont(FontOptions(10, Font::bold));
+      g.drawText("WONKA", 12, 9, 58, 22, Justification::centred);
     }
-    for (int side : {0, 1})
-      for (int row = 0; row < 4; ++row)
-        for (int col = 0; col < 6; ++col) {
-          float x = side ? 560.f + col * 14 : 260.f + col * 14,
-                y = 737.f + row * 10;
-          g.setColour(Colour(0xff505159));
-          g.fillRoundedRectangle(x, y + 1, 9, 3, 1.5f);
-          g.setColour(Colour(0xff07090d));
-          g.fillRoundedRectangle(x, y, 9, 3, 1.5f);
-        }
-    g.setFont(FontOptions(31, Font::bold));
-    g.setColour(Colours::black.withAlpha(.8f));
-    g.drawText("W O N K A", 51, 26, 270, 40, Justification::centredLeft);
-    g.setGradientFill(ColourGradient(Colour(0xffeff2f4), 0, 26,
-                                     Colour(0xff87939e), 0, 65, false));
-    g.drawText("W O N K A", 50, 25, 270, 40, Justification::centredLeft);
-    g.setColour(Colour(0xff85d8cc));
-    g.setFont(11);
-    g.drawText("VOCAL MOTION / REVERSE + THROW", 51, 63, 300, 20,
-               Justification::centredLeft);
-    g.setColour(Colour(0xff9ea7b5));
-    g.setFont(11);
-    g.drawText("SOURCE  /  SELECT  /  RENDER", 33, 155, 380, 26,
-               Justification::centredLeft);
-    auto label = [&](String t, int x, int y, int w) {
-      g.setColour(Colour(0xffb8c3d5));
-      g.setFont(14);
-      g.drawText(t, x, y, w, 22, Justification::centred);
-    };
-    label("SPACE", 180, 640, 180);
-    label("LENGTH", 540, 640, 180);
-    label("PREVIA", 28, 854, 120);
-    label("BPM manual", 200, 854, 120);
-    label("FEEDBACK", 370, 854, 130);
-    label("COMPASSO", 590, 854, 190);
-    g.setColour(Colour(0xff64718a));
-    g.setFont(12);
-    g.drawText("Reverse: alinhe o fim do WAV ao inicio da voz. Arraste depende "
-               "do host.",
-               30, 986, 840, 20, Justification::centred);
+    g.setColour(Colours::black.withAlpha(.7f));
+    g.fillRoundedRectangle(9, 40, 342, 33, 9);
+    if (!optionsOpen) {
+      g.setGradientFill(ColourGradient(Colour(0xff363941), 0, 355,
+                                       Colour(0xff23262e), 350, 619, false));
+      g.fillRoundedRectangle(8, 354, 344, 265, 10);
+      g.setColour(Colours::white.withAlpha(.1f));
+      g.drawRoundedRectangle(8, 354, 344, 265, 10, 1);
+      g.setColour(Colour(0xffb3bfcc));
+      g.setFont(12);
+      g.drawText("Space", 42, 495, 112, 20, Justification::centred);
+      g.drawText("Length", 202, 495, 112, 20, Justification::centred);
+      for (int side = 0; side < 2; ++side)
+        for (int row = 0; row < 4; ++row)
+          for (int col = 0; col < 5; ++col) {
+            float x = (side ? 244.f : 55.f) + col * 10, y = 566.f + row * 8;
+            g.setColour(Colour(0xff52565f));
+            g.fillRoundedRectangle(x, y + 1, 7, 2, 1);
+            g.setColour(Colour(0xff090c11));
+            g.fillRoundedRectangle(x, y, 7, 2, 1);
+          }
+    }
+    g.setColour(Colour(0xffd2d7dd));
+    g.setFont(FontOptions(12, Font::bold));
+    g.drawText("W O N K A", 105, 621, 150, 15, Justification::centred);
+    g.setFont(8);
+    g.setColour(Colour(0xff94a0b2));
+    g.drawText(String("v") + VoltaProcessor::version, 262, 622, 40, 14,
+               Justification::centredRight);
   }
   void resized() override {
-    float sx = getWidth() / 900.f, sy = getHeight() / 1020.f;
-    auto b = [&](Component &c, int x, int y, int w, int h) {
-      c.setBounds(roundToInt(x * sx), roundToInt(y * sy), roundToInt(w * sx),
-                  roundToInt(h * sy));
-    };
-    b(presets, 370, 32, 250, 32);
-    b(scale, 635, 32, 90, 32);
-    b(bypass, 750, 32, 110, 32);
-    b(modeButtons[0], 30, 100, 410, 36);
-    b(modeButtons[1], 455, 100, 415, 36);
-    b(variant, 455, 153, 150, 32);
-    b(division, 620, 153, 250, 32);
-    b(wave, 30, 193, 840, 182);
-    b(open, 30, 388, 130, 32);
-    b(rec, 170, 388, 150, 32);
-    b(play, 330, 388, 150, 32);
-    b(compare, 490, 388, 160, 32);
-    b(suggest, 660, 388, 210, 32);
-    b(durationLabel, 30, 430, 840, 25);
-    b(space, 175, 455, 190, 180);
-    b(length, 535, 455, 190, 180);
+    prev.setBounds(76, 10, 20, 22);
+    presets.setBounds(98, 10, 126, 22);
+    next.setBounds(226, 10, 20, 22);
+    scale.setBounds(251, 10, 50, 22);
+    recordButton.setBounds(317, 8, 26, 26);
+    reverse.setBounds(12, 43, 167, 27);
+    throwButton.setBounds(181, 43, 167, 27);
+    wave.setBounds(12, 80, 336, 240);
+    info.setBounds(19, 84, 158, 23);
+    line.setBounds(178, 87, 45, 20);
+    swell.setBounds(226, 87, 49, 20);
+    vocal.setBounds(282, 87, 57, 20);
+    playButton.setBounds(22, 277, 27, 27);
+    status.setBounds(55, 278, 283, 27);
+    meters.setBounds(16, 326, 328, 26);
+    space.setBounds(32, 358, 132, 137);
+    length.setBounds(196, 358, 132, 137);
+    authority.setBounds(307, 498, 32, 17);
     for (int i = 0; i < 4; ++i)
-      b(tabButtons[i], 240 + i * 100, 675, 95, 30);
-    b(tremRate, 530, 735, 110, 28);
-    b(small, 390, 710, 120, 100);
-    b(sync, 30, 675, 150, 30);
-    b(musical, 30, 710, 150, 30);
-    b(tail, 30, 745, 160, 30);
-    b(original, 660, 675, 200, 30);
-    b(normalise, 660, 710, 180, 30);
-    b(protect, 660, 745, 200, 30);
-    b(volume, 28, 880, 145, 40);
-    b(bpm, 195, 880, 145, 40);
-    b(feedback, 365, 880, 145, 40);
-    b(num, 575, 880, 120, 40);
-    b(denom, 715, 880, 100, 32);
-    b(rate, 30, 936, 155, 32);
-    b(bits, 195, 936, 160, 32);
-    b(save, 365, 936, 175, 32);
-    b(drag, 550, 936, 160, 32);
-    b(status, 30, 824, 840, 26);
+      tabs[i].setBounds(47 + i * 67, 522, 66, 21);
+    small.setBounds(136, 548, 88, 76);
+    bypass.setBounds(11, 622, 82, 16);
+    gear.setBounds(310, 621, 24, 17);
+    options.setBounds(12, 355, 336, 264);
+    options.setVisible(optionsOpen);
+    for (auto *c : std::initializer_list<Component *>{&space, &length, &small,
+                                                      &authority})
+      c->setVisible(!optionsOpen);
+    for (auto &tab : tabs)
+      tab.setVisible(!optionsOpen);
+    sync.setBounds(8, 7, 150, 22);
+    musical.setBounds(174, 7, 150, 22);
+    bpm.setBounds(8, 43, 146, 36);
+    num.setBounds(174, 43, 70, 36);
+    denom.setBounds(253, 47, 70, 22);
+    feedback.setBounds(8, 99, 146, 36);
+    division.setBounds(174, 104, 150, 22);
+    volume.setBounds(8, 155, 146, 36);
+    tremRate.setBounds(174, 160, 150, 22);
+    tail.setBounds(8, 191, 153, 21);
+    original.setBounds(174, 191, 153, 21);
+    normalise.setBounds(8, 213, 153, 21);
+    protect.setBounds(174, 213, 153, 21);
+    rate.setBounds(8, 238, 86, 22);
+    bits.setBounds(99, 238, 116, 22);
+    exportButton.setBounds(220, 238, 108, 22);
+  }
+};
+class Editor final : public AudioProcessorEditor {
+  Content content;
+  bool initialising = true;
+
+public:
+  explicit Editor(VoltaProcessor &p) : AudioProcessorEditor(p), content(p) {
+    setWantsKeyboardFocus(true);
+    setResizable(true, true);
+    setResizeLimits(252, 448, 540, 960);
+    getConstrainer()->setFixedAspectRatio(360. / 640.);
+    addAndMakeVisible(content);
+    content.resizeRequested = [this](double scale) {
+      setSize(roundToInt(360 * scale), roundToInt(640 * scale));
+    };
+    int width = 360;
+    if ((int)p.state.state.getProperty("uiSchema", 0) == 2)
+      width = jlimit(252, 540, (int)p.state.state.getProperty("uiWidth", 360));
+    setSize(width, roundToInt(width * 640. / 360));
+    initialising = false;
+    resized();
+  }
+  void resized() override {
+    double scale = std::min(getWidth() / 360., getHeight() / 640.);
+    content.setTransform(AffineTransform::scale((float)scale));
+    content.setTopLeftPosition(0, 0);
+    if (!initialising) {
+      content.p.state.state.setProperty("uiSchema", 2, nullptr);
+      content.p.state.state.setProperty("uiWidth", getWidth(), nullptr);
+    }
+  }
+  bool keyPressed(const KeyPress &key) override {
+    return content.keyPressed(key);
   }
 };
 } // namespace

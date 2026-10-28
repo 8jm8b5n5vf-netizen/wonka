@@ -1,44 +1,47 @@
-# Validação e pendências — 28/10/2026
+# WONKA 0.2.0 — validação de 28/10/2026
 
-Atualização visual: nome WONKA no produto/builds/exportação e painel com relevo, acabamento metálico, knobs com iluminação radial procedural e controles em baixo/alto relevo.
+## Executado nesta revisão
 
-## Executado nesta entrega
+Linux x86-64, GCC 14.2, CMake 4.4.4, JUCE 8.0.6 no commit `51a8a6d7aeae7326956d747737ccf1575e61e209`. Dependências locais Debian verificadas, TLS/checksums preservados.
 
-Ambiente: Linux x86-64, GCC 14.2, CMake 4.4.4, JUCE 8.0.6 no commit `51a8a6d7aeae7326956d747737ccf1575e61e209`. Dependências locais extraídas pelo dpkg de pacotes baixados com índices Debian assinados e verificação de checksums pelo APT; TLS preservado. Sem instalação de administrador.
+- **Build Release VST3 Linux concluído**, incluindo wrapper e `moduleinfo.json`. `ldd` não encontrou bibliotecas ausentes. Isso não constitui validação do wrapper dentro de uma DAW.
+- **CTest: 2 suítes passaram**, nenhuma falhou. A execução padrão sem DISPLAY não exercita as etapas gráficas condicionais.
+- **DSP: 43 verificações passaram.** Duração, seleção/fades, inversão temporal de um marcador conhecido, crescimento de Swell, canais, cauda, 3/4 e 3/8, timing pontuado/tercinado e em BPMs diferentes, alternância dos ecos, estabilidade do feedback sem depender da proteção de clipping, resposta real de Space/Length/Tone/Shape/Tremolo/Bars, sinal estéreo em oposição de fase, resampling/anti-aliasing, amostras inválidas e normalização explícita. A opção fonte + efeito preserva a fonte seca antes do primeiro eco.
+- **Integração sem display: 84 verificações passaram.** WAV mono/AIFF estéreo; sample rates/duração/canais; render no worker; sessão com áudio idêntico após apagar a fonte original; prévia e fim da reprodução; PCM24/float32 com leitura de volta; captura estéreo; parada exatamente aos 60 s e aviso; bypass; BPM/compasso por playhead simulado e overrides manuais.
+- Os 17 presets estabeleceram baseline sem indicação de alteração e preservaram a seleção. Alterar um parâmetro marcou o preset como modificado.
+- Alterações invalidaram o render imediatamente, antes do debounce. Tentativas de exportar/ouvir/arrastar um resultado antigo foram recusadas. Falha ao importar um novo arquivo invalidou o resultado anterior, e o timer não o recriou silenciosamente a partir da fonte antiga.
+- WAV float32 preparado para arraste foi lido e teve suas amostras comparadas integralmente ao buffer renderizado, na mesma sample rate. A prévia em ganho unitário foi comparada por canal ao buffer depois das rampas explícitas de ganho, ao longo do restante do trecho; tolerância 1e-6.
+- Cache foi criado antes do gesto de drag, validado e permaneceu no disco após substituir o estado da sessão. Não há rotina de limpeza automática dos WAVs usados pela DAW.
+- **Probe de heap Linux:** interceptações de new/malloc/calloc/realloc/free não detectaram operações de heap no callback de prévia ensaiado. Isso não é uma medição exaustiva de todos os caminhos do host, de alocadores externos ou de todas as situações de stress.
+- **Execução adicional com Xvfb: 223 verificações no executável de integração passaram.** Esse total inclui a repetição das verificações comuns e etapas gráficas, não representa 223 testes adicionais independentes. Verificou editor 360 × 640, alvo direto do display e fallback de file drop do editor, file URLs, erro explícito para conteúdo não suportado, rótulo de preset modificado, independência das quatro abas, escalas 70/85/100/125 com um único transform e controles dentro dos limites, painel técnico recolhível e restauração da largura/tamanho. Gerou imagens atuais dos dois painéis.
+- Scripts macOS passaram em `bash -n` (sintaxe); não foram executados no macOS nesta revisão. O script de build faz detecção local da arquitetura e solicita binários universais arm64/x86_64, como na compilação anterior do usuário.
 
-- Configuração e compilação Release concluídas, incluindo wrapper VST3 e seu `moduleinfo.json`.
-- Biblioteca VST3 Linux: `build/WONKA_artefacts/Release/VST3/WONKA.vst3/Contents/x86_64-linux/WONKA.so`. `ldd` não encontrou dependências ausentes.
-- CTest: **2 suítes passaram**, nenhuma falhou ou foi pulada na execução sem display. A parte gráfica é condicional e fica fora dessa execução sem DISPLAY.
-- `volta_tests`: **30 checks DSP passaram**. Abrange duração, fades, Line/Swell diferentes e não silenciosos, cauda, 3/4 e 3/8, pontuadas e tercinas, timing exato dos ecos em 60/120 BPM, ping-pong mono, feedback a 0,94, inclusão da fonte, conversão de sample rate, redução de aliasing, seleção, normalização explícita, fonte estéreo em oposição de fase e proteção contra NaNs.
-- `volta_integration`: passou importação WAV mono/AIFF estéreo, render no worker, prévia até o fim, gravação estéreo, bypass, exportação WAV PCM24 e float32 a 44,1 kHz com leitura de volta dos canais/duração/formato. Sessão restaurada com parâmetros/seleção e áudio idêntico após apagar o WAV original. Bloco de áudio incorporado inválido rejeitado.
-- Playhead simulado verificou BPM e compasso do host, fallback de BPM manual mantendo compasso disponível, e override manual de compasso. Isso não é validação em uma DAW real.
-- Execução adicional do teste de integração com Xvfb verificou desenho real da interface e redimensionamento. Imagem gerada em `build/WONKA-preview.png` e copiada para `docs/WONKA-preview.png`. O teste substitui o arquivo anterior para não reutilizar evidência antiga.
-- O script de configuração/compilação/testes salvo no ambiente foi executado com sucesso. Não existe serviço de backend a iniciar.
+Sinais de teste são sintéticos. Não foi feita avaliação auditiva com voz real, dispositivo físico ou comparação sonora A/B com Boomerang. Os vídeos foram usados para analisar o fluxo/organização/proporção, não para inferir um algoritmo proprietário.
 
-Os testes usam sinais sintéticos, não uma avaliação auditiva com gravações vocais reais. A prévia foi exercitada por chamadas do processador nos testes, sem dispositivo de áudio físico. Não houve medição automática de todas as alocações/locks da thread de áudio; a separação foi verificada por revisão do código e testes funcionais. A gravação funciona quando o host entrega blocos; não basta abrir a janela do editor.
+## Pendente de teste no ambiente de destino
 
-## Ainda não executado
+- **Compilar 0.2.0 no Mac e abrir essa versão no FL Studio.** O log fornecido pelo usuário comprovou build VST3/AU e dois testes da versão anterior, e o usuário relatou sua abertura no FL. Isso não comprova funcionamento da revisão atual.
+- Seletor nativo macOS (foco, callback e cancelamento no host), drop nativo Finder → display, regiões da playlist → plugin e waveform → playlist. Os testes locais chamaram os alvos JUCE com dados compatíveis; não simularam uma sessão real do FL/macOS.
+- Transporte parado/Smart disable, espaço interceptado pelo host, roteamento de áudio, automação em projetos FLP, múltiplas instâncias, restauração real de sessão FLP e tela Retina física. O teste de prévia chamou processBlock sem exigir transporte em reprodução; o host ainda precisa continuar chamando o plugin.
+- AU nativo, Windows, `auval`, pluginval, assinatura Developer ID, notarização, instaladores assinados e distribuição. A disponibilidade ou resultado dos jobs GitHub Actions não foi confirmado nesta revisão.
+- PNG real da logo: **não fornecido**. A incorporação condicional como BinaryData e o espaço proporcional no cabeçalho foram preparados, mas não houve compilação/validação com o arquivo real.
+- Stress prolongado, mudanças contínuas de tempo/rate, gravação interrompida por reconfiguração do host e pressão de memória em máquinas com pouca RAM.
 
-- Compilar VST3/AU no macOS (Intel ou Apple Silicon) e VST3 no Windows. O script macOS e a matriz de CI foram fornecidos, mas não executados nestes sistemas.
-- Abrir, escanear e usar WONKA no FL Studio, testar arraste externo de/para a playlist, teclado espaço sob interceptação do host, automação em sessões reais e reabertura de projetos FLP. Não há alegação de compatibilidade confirmada com FL Studio.
-- `auval`, pluginval, assinatura Developer ID, notarização, instaladores e testes de distribuição.
-- Testes prolongados de stress em todas as sample rates, automação contínua, várias instâncias e pressão de memória. Validação sonora subjetiva com vocais reais.
+## Limites documentados
 
-## Limitações de projeto
+- Importação/gravação até 60 s, mono/estéreo, 8–192 kHz. Duração principal/cauda Throw até 30 s; duração musical acima disso é limitada e indicada. Cauda Reverse pode acrescentar até 6 s. Reverb é cortado suavemente numa janela finita baseada no T60 estimado.
+- Length no Reverse usa resampling e muda pitch/formantes; não é time-stretch com preservação de pitch. Interpolação da prévia entre rates é linear; render/WAV usam sinc com janela.
+- Imagem estéreo do Throw é transformada intencionalmente: canal principal alterna e o segundo acompanha em ganho reduzido no lado oposto. Não se promete manter a panorâmica original do efeito. A fonte seca opcional preserva os canais.
+- Não há reconhecimento de palavras/seleção automática no fluxo. A seleção é manual. Não há suporte genérico a formatos proprietários de regiões da DAW nem posicionamento automático na timeline.
+- Normalização é opcional e desligada por padrão. Proteção é teto rígido, não limiter de mastering. Volume/rampas são da prévia e não alteram o WAV.
+- Captura em andamento não é incorporada ao estado: pare e aguarde antes de salvar. Áudio incorporado aumenta o XML da sessão. Cache persistente precisa ser copiado/consolidado pela DAW para mover projetos entre máquinas; não há migração automática de WAVs temporários antigos da versão anterior.
+- Renders paramétricos são atualizados em segundo plano, com breve debounce. A prévia é interrompida suavemente e precisa ser reiniciada; não existe morph entre renders nem DSP de delay/reverb contínuo na entrada ao vivo. É uma ferramenta de preparação/exportação de trechos vocais.
 
-- O Reverse ajusta duração por resampling, alterando também pitch/formantes. Não há algoritmo de time-stretch com preservação de pitch.
-- Entrada de até 60 s, 1/2 canais, 8–192 kHz. Duração principal/cauda Throw de até 30 s; a cauda Reverse opcional pode adicionar até 6 s. O visor separa duração principal e WAV total. Reverb é truncado suavemente em uma janela finita baseada no T60 estimado.
-- A imagem estéreo do Throw é transformada intencionalmente; canais de entrada não são descartados ou somados com cancelamento de fase, mas o resultado não mantém a panorâmica original.
-- Na seleção automática há apenas análise de envelope/silêncio; revise os marcadores. A seleção salva da sessão tem prioridade na restauração.
-- Só caminhos reais WAV/AIFF são importados por drag/drop. Não há suporte genérico a regiões proprietárias das DAWs nem posicionamento automático na timeline.
-- Arquivos de arraste são temporários. A sessão preserva o áudio fonte incorporado, não os temporários; pare a gravação e aguarde o render antes de salvar. Sessões podem ficar grandes.
-- Presets iniciais estão incluídos; não há navegador de presets externos do usuário. Parâmetros e escolhas de interface/exportação ficam no estado do host.
-- Proteção é clipping rígido opcional, não um limiter de mastering. Não há normalização automática por padrão.
+## Arquivos e evidências
 
-## Artefatos
-
-- Código e instruções: `/workspace/wonka`.
-- Pacote de fontes: `/workspace/WONKA-source.zip`.
-- VST3 Linux compilado: `/workspace/wonka/build/WONKA_artefacts/Release/VST3/WONKA.vst3`.
-- Preview: `/workspace/wonka/docs/WONKA-preview.png`.
-- Nenhum binário macOS ou Windows foi gerado nesta máquina Linux.
+- Projeto: `/workspace/wonka`.
+- VST3 Linux: `build/WONKA_artefacts/Release/VST3/WONKA.vst3`.
+- Testes: `build/volta_tests`, `build/volta_integration`; relatório CTest em `build/Testing/Temporary/LastTest.log`.
+- Imagens: `docs/WONKA-preview.png`, `docs/WONKA-options.png`.
+- Fontes empacotadas: `/workspace/WONKA-0.2.0-source.zip`. Não contém binários macOS.
+- Atualização local: `scripts/build-mac.command`, depois `scripts/install-mac.command`. Confirme v0.2.0 no rodapé após o rescan do FL.

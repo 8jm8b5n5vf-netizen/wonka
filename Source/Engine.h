@@ -15,6 +15,7 @@ struct Settings {
        protect = true;
 };
 double duration(const Settings &);
+double toneFrequency(double normalised, double sampleRate = 48000);
 double beatDivision(int);
 std::pair<double, double> suggest(const Audio &);
 Audio resample(const Audio &, double, double);

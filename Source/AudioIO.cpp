@@ -1,7 +1,6 @@
 #include "AudioIO.h"
 using namespace juce;
 void Clip::buildPeaks() {
-  suggested = volta::suggest(audio);
   peaks.clear();
   for (auto &channel : audio) {
     std::vector<float> values(4096, 0);
@@ -17,6 +16,9 @@ void Clip::buildPeaks() {
 std::shared_ptr<Clip> readAudioFile(const File &file) {
   if (!file.hasFileExtension("wav;aif;aiff"))
     throw std::runtime_error("Use WAV ou AIFF");
+  if (!file.existsAsFile())
+    throw std::runtime_error(
+        ("Arquivo nao encontrado: " + file.getFullPathName()).toStdString());
   AudioFormatManager formats;
   formats.registerBasicFormats();
   std::unique_ptr<AudioFormatReader> r(formats.createReaderFor(file));
@@ -90,7 +92,6 @@ std::shared_ptr<Clip> decodeAudio(const MemoryBlock &bytes, String name) {
       bytes.getSize() != 16 + (size_t)channels * samples * 4)
     throw std::runtime_error("Audio da sessao invalido");
   auto c = std::make_shared<Clip>();
-  c->autoSelect = false;
   c->rate = rate;
   c->name = std::move(name);
   c->audio = volta::Audio(channels, std::vector<float>(samples));
@@ -102,4 +103,17 @@ std::shared_ptr<Clip> decodeAudio(const MemoryBlock &bytes, String name) {
     }
   c->buildPeaks();
   return c;
+}
+
+File fileFromDrop(const String &description) {
+  auto text = description.trim().unquoted();
+  if (text.startsWithIgnoreCase("file:")) {
+    URL url(text);
+    if (url.isLocalFile())
+      return url.getLocalFile();
+    return {};
+  }
+  if (File::isAbsolutePath(text))
+    return File(text);
+  return {};
 }
