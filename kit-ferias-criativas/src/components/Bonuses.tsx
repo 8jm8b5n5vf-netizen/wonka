@@ -1,0 +1,28 @@
+import { bonuses } from "../data/content";
+import { SectionHeading } from "./SectionHeading";
+
+export function Bonuses() {
+  return (
+    <section className="bg-paper py-16 sm:py-24">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <SectionHeading
+          eyebrow="Em breve"
+          title="Bônus planejados"
+          description="Estes conteúdos estão em preparação e serão liberados quando estiverem finalizados."
+        />
+
+        <ul className="mt-12 grid gap-6 md:grid-cols-2">
+          {bonuses.map((bonus) => (
+            <li key={bonus.title} className="rounded-3xl border-2 border-dashed border-sun-500 bg-sun-100/60 p-6 sm:p-8">
+              <span className="inline-block rounded-full bg-white px-3 py-1 text-xs font-bold uppercase tracking-wide text-warning-600">
+                Em preparação
+              </span>
+              <h3 className="mt-4 text-xl font-bold text-ink-900">{bonus.title}</h3>
+              <p className="mt-2 text-ink-700">{bonus.text}</p>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}

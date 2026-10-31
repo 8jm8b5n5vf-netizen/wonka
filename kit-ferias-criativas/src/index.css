@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Baloo 2", ui-rounded, system-ui, sans-serif;
+  --font-sans: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --color-primary-50: #e9f7f4;
+  --color-primary-100: #c8ece4;
+  --color-primary-500: #12a08c;
+  --color-primary-600: #0b7a6b;
+  --color-primary-700: #09625a;
+
+  --color-sun-100: #fff4cc;
+  --color-sun-300: #ffd55c;
+  --color-sun-500: #ffc93c;
+
+  --color-coral-100: #ffe4dc;
+  --color-coral-500: #ff7a59;
+  --color-coral-600: #e25f3e;
+
+  --color-sky-100: #daf0fc;
+  --color-sky-500: #3aa8e8;
+
+  --color-success-600: #15803d;
+  --color-warning-600: #b45309;
+  --color-error-600: #b42318;
+
+  --color-ink-900: #1b2631;
+  --color-ink-700: #3d4b5c;
+  --color-ink-500: #5b6878;
+  --color-ink-200: #e3e8ee;
+  --color-paper: #fffbf3;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 5rem;
+  }
+
+  body {
+    @apply bg-paper font-sans text-ink-900 antialiased;
+    line-height: 1.5;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
+    line-height: 1.2;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.animate-rise {
+  animation: rise 0.7s ease-out both;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .animate-rise,
+  .animate-float {
+    animation: none;
+  }
+}
