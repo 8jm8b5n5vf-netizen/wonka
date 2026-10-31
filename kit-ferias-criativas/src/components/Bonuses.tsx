@@ -1,7 +1,12 @@
+import { siteConfig } from "../config/site";
 import { bonuses } from "../data/content";
 import { SectionHeading } from "./SectionHeading";
 
 export function Bonuses() {
+  const visibleBonuses = bonuses.filter((bonus) => siteConfig.bonuses[bonus.id].enabled);
+
+  if (visibleBonuses.length === 0) return null;
+
   return (
     <section className="bg-paper py-16 sm:py-24">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
@@ -12,8 +17,8 @@ export function Bonuses() {
         />
 
         <ul className="mt-12 grid gap-6 md:grid-cols-2">
-          {bonuses.map((bonus) => (
-            <li key={bonus.title} className="rounded-3xl border-2 border-dashed border-sun-500 bg-sun-100/60 p-6 sm:p-8">
+          {visibleBonuses.map((bonus) => (
+            <li key={bonus.id} className="rounded-3xl border-2 border-dashed border-sun-500 bg-sun-100/60 p-6 sm:p-8">
               <span className="inline-block rounded-full bg-white px-3 py-1 text-xs font-bold uppercase tracking-wide text-warning-600">
                 Em preparação
               </span>

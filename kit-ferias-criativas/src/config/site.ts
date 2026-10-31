@@ -17,6 +17,12 @@ export const siteConfig = {
   /** Link de checkout da Cakto. Ex.: "https://pay.cakto.com.br/xxxx" */
   checkoutUrl: "",
 
+  /** Bônus exibidos na página. Mude enabled para false para ocultar um bônus. */
+  bonuses: {
+    calendar30Days: { enabled: true },
+    parentsGuide: { enabled: true },
+  },
+
   /** ID do Meta Pixel. Preencha somente quando existir. Ex.: "1234567890" */
   metaPixelId: "",
 

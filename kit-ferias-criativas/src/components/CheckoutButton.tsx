@@ -1,4 +1,5 @@
 import { siteConfig } from "../config/site";
+import { getCheckoutHref } from "../lib/checkout";
 import { trackMetaEvent } from "../lib/metaPixel";
 
 type CheckoutButtonProps = {
@@ -45,7 +46,7 @@ export function CheckoutButton({ label, size = "md", className = "" }: CheckoutB
 
   return (
     <a
-      href={siteConfig.checkoutUrl}
+      href={getCheckoutHref()}
       target="_blank"
       rel="noopener noreferrer"
       onClick={() => trackMetaEvent("InitiateCheckout")}

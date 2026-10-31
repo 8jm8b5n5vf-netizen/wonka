@@ -1,3 +1,7 @@
+import type { siteConfig } from "../config/site";
+
+export type BonusId = keyof typeof siteConfig.bonuses;
+
 export const painPoints = [
   {
     title: "As férias chegam e a rotina some",
@@ -13,65 +17,107 @@ export const painPoints = [
   },
 ];
 
+export const benefits = [
+  {
+    icon: "smartphone",
+    title: "Alternativas às telas",
+    text: "Mais ideias de diversão para variar a rotina durante as férias.",
+  },
+  {
+    icon: "printer",
+    title: "Pronto para imprimir",
+    text: "Escolha as páginas, imprima e prepare a atividade.",
+  },
+  {
+    icon: "book",
+    title: "Aprender brincando",
+    text: "Atividades com letras, números, leitura e habilidades motoras.",
+  },
+  {
+    icon: "calendar",
+    title: "Mais ideias, menos planejamento",
+    text: "Uma coleção organizada para facilitar a escolha das atividades.",
+  },
+] as const;
+
 export const steps = [
   {
-    title: "Compre com segurança",
-    text: "Finalize a compra na página de pagamento. O valor é único, sem assinatura.",
+    title: "Escolha seu kit",
+    text: "Faça sua compra pelo checkout da plataforma de pagamento.",
   },
   {
-    title: "Receba os arquivos",
-    text: "Após a confirmação do pagamento, você recebe os arquivos digitais em PDF.",
+    title: "Acesse os materiais",
+    text: "Receba acesso aos arquivos digitais conforme as instruções enviadas após a confirmação da compra.",
   },
   {
-    title: "Escolha as atividades",
-    text: "Veja as opções e escolha as que combinam com a idade e o interesse de cada criança.",
-  },
-  {
-    title: "Imprima e brinque",
-    text: "Imprima as páginas escolhidas e transforme a tarde em um momento de aprendizado.",
+    title: "Imprima e divirta-se",
+    text: "Escolha atividades adequadas ao nível da criança e aproveite os momentos em casa.",
   },
 ];
 
 export const categories = [
-  { name: "Alfabeto", symbol: "Aa", description: "Reconhecer letras com brincadeiras de cor e forma." },
-  { name: "Vogais", symbol: "AEIOU", description: "Primeiros sons e a associação entre letra e som." },
-  { name: "Sílabas", symbol: "ba", description: "Juntar sons e formar palavras de forma gradual." },
-  { name: "Números", symbol: "123", description: "Contagem, comparação e noções de quantidade." },
-  { name: "Coordenação motora", symbol: "✎", description: "Traçados, recortes e movimentos com as mãos." },
-  { name: "Leitura", symbol: "Lê", description: "Pequenos textos e compreensão para ler com confiança." },
-  { name: "Quebra-cabeças", symbol: "◩", description: "Raciocínio, atenção e paciência em cada peça." },
+  { name: "Alfabeto", symbol: "Aa", description: "Reconhecimento de letras, traçado e atividades visuais." },
+  { name: "Vogais", symbol: "AEIOU", description: "Identificação e exercícios com vogais." },
+  { name: "Sílabas", symbol: "ba", description: "Sílabas simples e combinações mais complexas." },
+  { name: "Números e matemática", symbol: "123", description: "Contagem, números e operações introdutórias." },
+  { name: "Coordenação motora", symbol: "✎", description: "Traçado e atividades para as mãos." },
+  { name: "Pequenas leituras", symbol: "Lê", description: "Textos curtos para ler conforme o nível." },
+  { name: "Quebra-cabeças", symbol: "◩", description: "Atividades lúdicas de associação e raciocínio." },
 ];
 
-export const bonuses = [
+export const bonuses: { id: BonusId; title: string; text: string }[] = [
   {
+    id: "calendar30Days",
     title: "Calendário de 30 Dias de Férias",
-    text: "Um roteiro visual para organizar as semanas de descanso com atividades variadas.",
+    text: "Sugestões organizadas para facilitar a escolha das atividades ao longo das férias.",
   },
   {
+    id: "parentsGuide",
     title: "Guia Prático para os Pais",
-    text: "Dicas simples para conduzir as atividades e aproveitar o tempo juntos.",
+    text: "Orientações simples para escolher, imprimir e utilizar os materiais.",
   },
 ];
 
 export const faqs = [
   {
-    question: "O produto é físico?",
+    question: "O Kit Férias Criativas é físico ou digital?",
     answer:
-      "Não. O Kit Férias Criativas é um produto digital. Você recebe os arquivos em PDF e decide quando e quantas vezes imprimir.",
+      "É digital. Você recebe os materiais em PDF, para imprimir em casa ou em uma gráfica de sua preferência.",
   },
   {
-    question: "Preciso ter impressora?",
+    question: "Preciso de impressora?",
     answer:
-      "Recomendamos imprimir em casa ou em uma gráfica de sua preferência. Os arquivos são preparados para impressão comum.",
+      "Para imprimir em casa, sim. Se preferir, você também pode levar os arquivos a uma gráfica.",
   },
   {
-    question: "Como recebo o kit?",
+    question: "Como vou receber os arquivos?",
     answer:
-      "Após a confirmação do pagamento, os arquivos são disponibilizados para você conforme as instruções da plataforma de pagamento.",
+      "Após a confirmação do pagamento, os arquivos são disponibilizados conforme as instruções da plataforma de pagamento.",
   },
   {
-    question: "As atividades são para qual idade?",
+    question: "Para quais idades o kit é indicado?",
     answer:
-      "As atividades são organizadas conforme a fase de desenvolvimento das crianças. A faixa etária recomendada será informada em cada material antes da publicação final.",
+      "As atividades são organizadas por fase de desenvolvimento, para você escolher as mais adequadas a cada criança. A faixa etária recomendada será informada em cada material.",
+  },
+  {
+    question: "Posso imprimir mais de uma atividade?",
+    answer: "Você escolhe as páginas que quer imprimir para usar em casa, quando e quantas vezes precisar.",
+  },
+  {
+    question: "Preciso comprar uma assinatura?",
+    answer: "Não. O pagamento é único, sem mensalidade.",
+  },
+  {
+    question: "Quais materiais estão incluídos?",
+    answer:
+      "Atividades nas categorias alfabeto, vogais, sílabas, números e matemática, coordenação motora, pequenas leituras e quebra-cabeças. Os bônus planejados serão liberados quando estiverem concluídos.",
+  },
+  {
+    question: "Como entro em contato caso tenha dúvidas?",
+    answer: "Use os dados de contato indicados no rodapé da página.",
+  },
+  {
+    question: "Quais são as condições de cancelamento?",
+    answer: "As condições de compra e cancelamento estão descritas nos termos de uso, disponíveis no rodapé.",
   },
 ];

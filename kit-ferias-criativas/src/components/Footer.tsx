@@ -9,7 +9,7 @@ const contactItems = [
 
 export function Footer() {
   return (
-    <footer className="bg-ink-900 text-white">
+    <footer className="bg-ink-900 pb-24 text-white md:pb-0">
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-3">
         <div>
           <p className="font-display text-2xl font-extrabold">{siteConfig.productName}</p>
