@@ -1,0 +1,12 @@
+{
+  "name": "project",
+  "private": true,
+  "workspaces": [
+    "kit-ferias-criativas"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w kit-ferias-criativas",
+    "build": "npm run build -w kit-ferias-criativas",
+    "preview": "npm run preview -w kit-ferias-criativas"
+  }
+}

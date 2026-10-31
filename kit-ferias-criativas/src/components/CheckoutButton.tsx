@@ -13,7 +13,7 @@ const baseClasses =
 
 const sizeClasses = {
   md: "px-5 py-2.5 text-base",
-  lg: "px-8 py-4 text-lg sm:text-xl",
+  lg: "px-6 py-4 text-base sm:px-8 sm:text-xl",
 };
 
 const enabledClasses =

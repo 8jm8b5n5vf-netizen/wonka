@@ -26,7 +26,7 @@ export function Header() {
       }`}
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-        <a href="#topo" className="font-display text-xl font-extrabold text-primary-700 sm:text-2xl">
+        <a href="#topo" className="min-w-0 truncate font-display text-lg font-extrabold text-primary-700 sm:text-2xl">
           {siteConfig.productName}
         </a>
 

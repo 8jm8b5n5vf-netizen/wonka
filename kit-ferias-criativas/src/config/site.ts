@@ -14,17 +14,17 @@ export const siteConfig = {
     paymentNote: "Pagamento único",
   },
 
-  /** Link de checkout da Cakto. Ex.: "https://pay.cakto.com.br/xxxx" */
+  /** Cole aqui o link de checkout da Cakto. Enquanto estiver vazio, os botões ficam desativados. */
   checkoutUrl: "",
+
+  /** ID do Meta Pixel. Preencha somente quando existir. */
+  metaPixelId: "",
 
   /** Bônus exibidos na página. Mude enabled para false para ocultar um bônus. */
   bonuses: {
     calendar30Days: { enabled: true },
     parentsGuide: { enabled: true },
   },
-
-  /** ID do Meta Pixel. Preencha somente quando existir. Ex.: "1234567890" */
-  metaPixelId: "",
 
   contact: {
     email: "",
@@ -37,4 +37,4 @@ export const siteConfig = {
     termsUrl: "#termos",
     privacyUrl: "#privacidade",
   },
-} as const;
+};

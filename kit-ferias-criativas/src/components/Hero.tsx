@@ -42,7 +42,12 @@ export function Hero() {
             O Kit Férias Criativas reúne atividades educativas prontas para imprimir, para a criança aprender e se divertir enquanto você descansa.
           </p>
 
-          <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center lg:justify-start">
+          <div className="mt-8 inline-flex items-baseline gap-3 rounded-2xl bg-white px-5 py-3 text-left shadow-sm ring-1 ring-ink-200">
+            <span className="font-display text-3xl font-extrabold text-ink-900">{price}</span>
+            <span className="text-sm font-bold text-primary-700">pagamento único</span>
+          </div>
+
+          <div className="mt-6 flex flex-col items-center gap-4 sm:flex-row sm:justify-center lg:justify-start">
             <CheckoutButton label="Quero meu Kit Férias Criativas" size="lg" className="w-full sm:w-auto" />
             <a
               href="#conteudo"
@@ -51,9 +56,7 @@ export function Hero() {
               Ver o conteúdo
             </a>
           </div>
-          <p className="mt-4 text-sm text-ink-500">
-            Por {price}, pagamento único. Arquivos digitais em PDF.
-          </p>
+          <p className="mt-4 text-sm text-ink-500">Material digital em PDF · Pronto para imprimir</p>
         </div>
 
         <div className="animate-rise flex justify-center" style={{ animationDelay: "120ms" }}>
