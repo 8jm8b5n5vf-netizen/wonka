@@ -56,13 +56,68 @@ export const steps = [
 ];
 
 export const categories = [
-  { name: "Alfabeto", symbol: "Aa", description: "Reconhecimento de letras, traçado e atividades visuais." },
-  { name: "Vogais", symbol: "AEIOU", description: "Identificação e exercícios com vogais." },
-  { name: "Sílabas", symbol: "ba", description: "Sílabas simples e combinações mais complexas." },
-  { name: "Números e matemática", symbol: "123", description: "Contagem, números e operações introdutórias." },
-  { name: "Coordenação motora", symbol: "✎", description: "Traçado e atividades para as mãos." },
-  { name: "Pequenas leituras", symbol: "Lê", description: "Textos curtos para ler conforme o nível." },
-  { name: "Quebra-cabeças", symbol: "◩", description: "Atividades lúdicas de associação e raciocínio." },
+  {
+    name: "Alfabeto",
+    description: "Reconhecimento de letras, traçado e atividades visuais.",
+    cover: "/capa-alfabeto.webp",
+  },
+  {
+    name: "Vogais",
+    description: "Identificação e exercícios com vogais.",
+    cover: "/capa-vogais.webp",
+  },
+  {
+    name: "Sílabas",
+    description: "Sílabas simples e combinações mais complexas.",
+    cover: "/capa-silabas.webp",
+  },
+  {
+    name: "Números e matemática",
+    description: "Contagem, números e operações introdutórias.",
+    cover: "/capa-numeros.webp",
+  },
+  {
+    name: "Coordenação motora",
+    description: "Traçado e atividades para as mãos.",
+    cover: "/capa-coordenacao.webp",
+  },
+  {
+    name: "Pequenas leituras",
+    description: "Textos curtos para ler conforme o nível.",
+    cover: "/capa-leitura.webp",
+  },
+  {
+    name: "Quebra-cabeças",
+    description: "Atividades lúdicas de associação e raciocínio.",
+    cover: "/capa-quebra-cabeca.webp",
+  },
+];
+
+export const samples = [
+  {
+    src: "/amostra-alfabeto.webp",
+    alt: "Página de exemplo da atividade de alfabeto para imprimir",
+  },
+  {
+    src: "/amostra-vogais.webp",
+    alt: "Página de exemplo da atividade de vogais para imprimir",
+  },
+  {
+    src: "/amostra-silabas.webp",
+    alt: "Página de exemplo da atividade de sílabas para imprimir",
+  },
+  {
+    src: "/amostra-matematica.webp",
+    alt: "Página de exemplo da atividade de números e matemática para imprimir",
+  },
+  {
+    src: "/amostra-coordenacao.webp",
+    alt: "Página de exemplo da atividade de coordenação motora para imprimir",
+  },
+  {
+    src: "/amostra-quebra-cabeca.webp",
+    alt: "Página de exemplo da atividade de quebra-cabeça para imprimir",
+  },
 ];
 
 export const bonuses: { id: BonusId; title: string; text: string }[] = [
