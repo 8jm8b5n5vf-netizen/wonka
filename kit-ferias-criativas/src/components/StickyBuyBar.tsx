@@ -5,25 +5,40 @@ import { CheckoutButton } from "./CheckoutButton";
 
 export function StickyBuyBar() {
   const [pastHero, setPastHero] = useState(false);
-  const [offerInView, setOfferInView] = useState(false);
+  const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
     const hero = document.getElementById("topo");
     const offer = document.getElementById("oferta");
+    const reembolso = document.getElementById("reembolso");
     if (!hero || !offer) return;
 
     const heroObserver = new IntersectionObserver(([entry]) => setPastHero(!entry.isIntersecting));
-    const offerObserver = new IntersectionObserver(([entry]) => setOfferInView(entry.isIntersecting));
+    const offerObserver = new IntersectionObserver(([entry]) => setHidden(entry.isIntersecting));
     heroObserver.observe(hero);
     offerObserver.observe(offer);
+    if (reembolso) offerObserver.observe(reembolso);
+
+    const onPrivacy = () => setHidden(true);
+    window.addEventListener("open-privacy", onPrivacy);
+    const onPrivacyClosed = () => {
+      const offer = document.getElementById("oferta");
+      if (offer) {
+        const r = offer.getBoundingClientRect();
+        setHidden(r.top < window.innerHeight && r.bottom > 0);
+      }
+    };
+    window.addEventListener("ad-consent-closed", onPrivacyClosed);
 
     return () => {
       heroObserver.disconnect();
       offerObserver.disconnect();
+      window.removeEventListener("open-privacy", onPrivacy);
+      window.removeEventListener("ad-consent-closed", onPrivacyClosed);
     };
   }, []);
 
-  if (!pastHero || offerInView) return null;
+  if (!pastHero || hidden) return null;
 
   const price = formatPrice(siteConfig.price.total, siteConfig.price.locale, siteConfig.price.currency);
 
@@ -36,7 +51,7 @@ export function StickyBuyBar() {
         <p className="text-center text-sm font-semibold text-ink-700">
           {price} no total · pagamento único
         </p>
-        <CheckoutButton label="Quero meu Kit Férias Criativas" size="lg" className="w-full" />
+        <CheckoutButton label="Quero meu kit" size="lg" className="w-full" />
       </div>
     </div>
   );

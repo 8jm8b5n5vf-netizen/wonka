@@ -3,11 +3,14 @@ import { formatPrice } from "../lib/format";
 import { CheckoutButton } from "./CheckoutButton";
 
 export function Hero() {
-  const price = formatPrice(siteConfig.price.total, siteConfig.price.locale, siteConfig.price.currency);
+  const { total, value, serviceFee, locale, currency, paymentNote } = siteConfig.price;
+  const totalText = formatPrice(total, locale, currency);
+  const kitText = formatPrice(value, locale, currency);
+  const feeText = formatPrice(serviceFee, locale, currency);
 
   return (
     <section id="topo" className="relative overflow-hidden bg-gradient-to-b from-sun-100 via-paper to-paper pt-28 pb-16 sm:pt-36 sm:pb-24">
-      <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:gap-16">
+      <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:gap-16">
         <div className="animate-rise text-center lg:text-left">
           <span className="inline-block rounded-full bg-white px-4 py-1.5 text-sm font-bold text-primary-700 shadow-sm">
             {siteConfig.tagline}
@@ -16,12 +19,17 @@ export function Hero() {
             Férias mais divertidas, com menos tempo de tela!
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-lg text-ink-700 sm:text-xl lg:mx-0">
-            Escolha uma atividade de letras, números ou jogos, imprima uma folha e convide a criança para brincar. O kit reúne 22 cadernos em PDF organizados em seis módulos.
+            Escolha uma atividade, imprima uma folha e acompanhe a criança. O kit reúne 22 cadernos em PDF organizados em seis módulos.
           </p>
 
-          <div className="mt-8 inline-flex items-baseline gap-3 rounded-2xl bg-white px-5 py-3 text-left shadow-sm ring-1 ring-ink-200">
-            <span className="font-display text-3xl font-extrabold text-ink-900">{price}</span>
-            <span className="text-sm font-bold text-primary-700">pagamento único</span>
+          <div className="mt-8 inline-flex flex-col items-center gap-2 rounded-2xl bg-white px-6 py-4 text-center shadow-sm ring-1 ring-ink-200 lg:items-start lg:text-left">
+            <div className="flex items-baseline gap-2">
+              <span className="font-display text-3xl font-extrabold text-ink-900 sm:text-4xl">{totalText}</span>
+              <span className="text-sm font-bold text-primary-700">{paymentNote.toLowerCase()}</span>
+            </div>
+            <p className="text-sm text-ink-500">
+              {kitText} do kit + {feeText} de taxa de serviço
+            </p>
           </div>
 
           <div className="mt-6 flex flex-col items-center gap-4 sm:flex-row sm:justify-center lg:justify-start">
@@ -30,16 +38,20 @@ export function Hero() {
               href="#amostras"
               className="inline-flex w-full items-center justify-center rounded-full border-2 border-primary-600 px-6 py-3.5 font-display text-lg font-bold text-primary-700 transition hover:bg-primary-50 sm:w-auto"
             >
-              Ver páginas do kit
+              Ver atividades por dentro
             </a>
           </div>
           <p className="mt-4 text-sm text-ink-500">Material digital em PDF · Pronto para imprimir</p>
         </div>
 
         <div className="animate-rise flex justify-center" style={{ animationDelay: "120ms" }}>
-          <div className="animate-float">
-            <img src="/composicao-hero.webp" width="1100" height="560" alt="Capas dos cadernos de vogais, alfabeto e números" className="h-auto w-full rounded-3xl" />
-          </div>
+          <img
+            src="/composicao-hero.webp"
+            width={1100}
+            height={560}
+            alt="Capas e páginas reais dos cadernos de vogais, alfabeto e números do kit"
+            className="h-auto w-full max-w-xl rounded-3xl shadow-lg"
+          />
         </div>
       </div>
     </section>

@@ -12,6 +12,7 @@ export function AdPreferences() {
   function choose(accepted: boolean) {
     try { localStorage.setItem("ad-consent", accepted ? "accepted" : "declined"); } catch {}
     setOpen(false);
+    window.dispatchEvent(new Event("ad-consent-closed"));
     if (accepted) initMetaPixel();
     else if (window.fbq) window.location.reload();
   }

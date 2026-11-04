@@ -28,6 +28,11 @@ export const siteConfig = {
     parentsGuide: { enabled: true },
   },
 
+  brand: "Mundo das Atividades",
+
+  /** Portal de reembolsos da Cakto (direito de arrependimento em 7 dias). */
+  refundUrl: "https://reembolso.cakto.com.br/",
+
   contact: {
     email: "",
     whatsapp: "",
