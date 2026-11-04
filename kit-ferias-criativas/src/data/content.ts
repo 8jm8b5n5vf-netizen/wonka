@@ -47,7 +47,7 @@ export const steps = [
   },
   {
     title: "Acesse os materiais",
-    text: "Receba acesso aos arquivos digitais conforme as instruções enviadas após a confirmação da compra.",
+    text: "Após o pagamento aprovado, receba por e-mail as instruções para entrar na área de membros da Cakto e baixar os PDFs.",
   },
   {
     title: "Imprima e divirta-se",
@@ -147,12 +147,12 @@ export const faqs = [
   {
     question: "Como vou receber os arquivos?",
     answer:
-      "Após a confirmação do pagamento, os arquivos são disponibilizados conforme as instruções da plataforma de pagamento.",
+      "Após a aprovação do pagamento, você recebe por e-mail as instruções para acessar a área de membros da Cakto. Lá, abre os módulos e baixa cada PDF. Confira também o spam.",
   },
   {
     question: "Para quais idades o kit é indicado?",
     answer:
-      "As atividades são organizadas por fase de desenvolvimento, para você escolher as mais adequadas a cada criança. A faixa etária recomendada será informada em cada material.",
+      "Escolha pelo que a criança já consegue fazer. Para quem está começando, experimente traçar uma letra ou contar figuras. Para quem já junta sílabas, veja as pequenas leituras. Você pode abrir as amostras antes de decidir.",
   },
   {
     question: "Posso imprimir mais de uma atividade?",
@@ -165,14 +165,14 @@ export const faqs = [
   {
     question: "Quais materiais estão incluídos?",
     answer:
-      "Atividades nas categorias alfabeto, vogais, sílabas, números e matemática, coordenação motora, pequenas leituras e quebra-cabeças. Os bônus planejados serão liberados quando estiverem concluídos.",
+      "Atividades nas categorias alfabeto, vogais, sílabas, números e matemática, coordenação motora, pequenas leituras e quebra-cabeças. Acompanha o Calendário de 30 Dias de Férias e o Guia Prático para os Pais.",
   },
   {
     question: "Como entro em contato caso tenha dúvidas?",
-    answer: "Use os dados de contato indicados no rodapé da página.",
+    answer: "Use o contato do produtor informado no e-mail de confirmação da compra. Tenha em mãos o e-mail usado no pedido.",
   },
   {
-    question: "Quais são as condições de cancelamento?",
-    answer: "As condições de compra e cancelamento estão descritas nos termos de uso, disponíveis no rodapé.",
+    question: "Como peço reembolso nos primeiros 7 dias?",
+    answer: "O art. 49 do Código de Defesa do Consumidor prevê 7 dias para desistir da compra online, a contar da assinatura ou do recebimento do produto ou serviço. Para pedir pela Cakto, use o e-mail da compra e selecione o pedido no portal de reembolsos.",
   },
 ];

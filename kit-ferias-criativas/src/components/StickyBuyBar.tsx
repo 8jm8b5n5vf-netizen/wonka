@@ -25,7 +25,7 @@ export function StickyBuyBar() {
 
   if (!pastHero || offerInView) return null;
 
-  const price = formatPrice(siteConfig.price.value, siteConfig.price.locale, siteConfig.price.currency);
+  const price = formatPrice(siteConfig.price.total, siteConfig.price.locale, siteConfig.price.currency);
 
   return (
     <div
@@ -34,7 +34,7 @@ export function StickyBuyBar() {
     >
       <div className="mx-auto flex max-w-md flex-col gap-2">
         <p className="text-center text-sm font-semibold text-ink-700">
-          {price} · {siteConfig.price.paymentNote}
+          {price} no total · pagamento único
         </p>
         <CheckoutButton label="Quero meu Kit Férias Criativas" size="lg" className="w-full" />
       </div>

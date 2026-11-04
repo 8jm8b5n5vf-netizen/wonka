@@ -3,14 +3,14 @@ import { formatPrice } from "../lib/format";
 import { CheckoutButton } from "./CheckoutButton";
 
 const included = [
-  "Materiais educativos em PDF, prontos para imprimir",
+  "22 cadernos em PDF, organizados em seis módulos",
   "Categorias organizadas: alfabeto, vogais, sílabas, números, coordenação motora, leitura e quebra-cabeças",
-  "Atividades de diferentes níveis",
+  "Índice para encontrar uma atividade e guia de impressão",
   "Pagamento único, sem assinatura",
 ];
 
 export function Offer() {
-  const price = formatPrice(siteConfig.price.value, siteConfig.price.locale, siteConfig.price.currency);
+  const price = formatPrice(siteConfig.price.total, siteConfig.price.locale, siteConfig.price.currency);
   const [whole, cents] = price.replace("R$", "").trim().split(",");
 
   return (
@@ -23,6 +23,7 @@ export function Offer() {
             Uma coleção de atividades educativas digitais para imprimir e aproveitar durante as férias.
           </p>
 
+          <img src="/composicao-oferta.webp" alt="Capas reais dos cadernos de sílabas, leitura e quebra-cabeças" width="1100" height="560" loading="lazy" className="mx-auto mt-5 h-auto w-64 rounded-xl" />
           <div className="mt-8 flex items-end justify-center gap-1 font-display text-ink-900">
             <span className="mb-3 text-2xl font-bold text-ink-700">R$</span>
             <span className="text-7xl font-extrabold leading-none">{whole}</span>
@@ -30,6 +31,7 @@ export function Offer() {
           </div>
           <p className="mt-3 font-semibold text-ink-700">{siteConfig.price.paymentNote} · Produto digital</p>
 
+          <p className="mt-3 text-sm text-ink-700">Total com a taxa da Cakto incluída. Kit R$ 29,90 + taxa R$ 0,99.</p>
           <ul className="mx-auto mt-8 max-w-md space-y-3 text-left">
             {included.map((item) => (
               <li key={item} className="flex items-start gap-3 text-ink-700">
@@ -44,13 +46,13 @@ export function Offer() {
             ))}
           </ul>
           <p className="mx-auto mt-6 max-w-md text-left text-sm text-ink-500">
-            Os bônus planejados serão liberados quando estiverem prontos e não estão incluídos neste preço.
+            Inclui o Calendário de 30 Dias de Férias e o Guia Prático para os Pais.
           </p>
 
           <div className="mt-10">
             <CheckoutButton label="Quero meu Kit Férias Criativas" size="lg" className="w-full sm:w-auto" />
           </div>
-          <p className="mt-4 text-sm text-ink-500">Você será direcionado ao checkout para finalizar a compra.</p>
+          <p className="mt-4 text-sm text-ink-500">Compra online com direito de arrependimento de 7 dias. <a href="#reembolso" className="font-semibold underline">Como pedir reembolso</a>.</p>
         </div>
       </div>
     </section>

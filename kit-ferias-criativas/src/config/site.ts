@@ -9,13 +9,15 @@ export const siteConfig = {
 
   price: {
     value: 29.9,
+    serviceFee: 0.99,
+    total: 30.89,
     currency: "BRL",
     locale: "pt-BR",
     paymentNote: "Pagamento único",
   },
 
   /** Cole aqui o link de checkout da Cakto. Enquanto estiver vazio, os botões ficam desativados. */
-  checkoutUrl: "",
+  checkoutUrl: "https://pay.cakto.com.br/32t33vz_1269587",
 
   /** ID do Meta Pixel. Preencha somente quando existir. */
   metaPixelId: "",
@@ -29,7 +31,7 @@ export const siteConfig = {
   contact: {
     email: "",
     whatsapp: "",
-    companyName: "",
+    companyName: "Mundo das Atividades",
     cnpj: "",
   },
 

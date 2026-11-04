@@ -26,7 +26,7 @@ export function Header() {
       }`}
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-        <a href="#topo" className="min-w-0 truncate font-display text-lg font-extrabold text-primary-700 sm:text-2xl">
+        <a href="#topo" className="min-w-0 max-w-[180px] whitespace-normal leading-tight font-display text-base sm:max-w-none font-extrabold text-primary-700 sm:text-2xl">
           {siteConfig.productName}
         </a>
 
@@ -42,7 +42,7 @@ export function Header() {
           ))}
         </nav>
 
-        <CheckoutButton label="Comprar agora" size="md" className="px-4 py-2 text-sm sm:px-5" />
+        <CheckoutButton label="Comprar" size="md" className="shrink-0 whitespace-nowrap px-4 py-2 text-sm sm:px-5" />
       </div>
     </header>
   );
