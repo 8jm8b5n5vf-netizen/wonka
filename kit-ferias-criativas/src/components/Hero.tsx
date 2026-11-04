@@ -24,7 +24,6 @@ export function Hero() {
             <span className="text-sm font-bold text-primary-700">pagamento único</span>
           </div>
 
-          <p className="mt-3 text-sm text-ink-700">Total com a taxa da Cakto incluída. Kit R$ 29,90 + taxa R$ 0,99.</p>
           <div className="mt-6 flex flex-col items-center gap-4 sm:flex-row sm:justify-center lg:justify-start">
             <CheckoutButton label="Quero meu Kit Férias Criativas" size="lg" className="w-full sm:w-auto" />
             <a
