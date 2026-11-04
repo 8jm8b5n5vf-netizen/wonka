@@ -31,7 +31,6 @@ export function Offer() {
           </div>
           <p className="mt-3 font-semibold text-ink-700">{siteConfig.price.paymentNote} · Produto digital</p>
 
-          <p className="mt-3 text-sm text-ink-700">Total com a taxa da Cakto incluída. Kit R$ 29,90 + taxa R$ 0,99.</p>
           <ul className="mx-auto mt-8 max-w-md space-y-3 text-left">
             {included.map((item) => (
               <li key={item} className="flex items-start gap-3 text-ink-700">
