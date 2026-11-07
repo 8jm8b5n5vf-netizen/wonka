@@ -3,8 +3,9 @@ import { formatPrice } from "../lib/format";
 import { CheckoutButton } from "./CheckoutButton";
 
 export function Offer() {
-  const { value, locale, currency, paymentNote } = siteConfig.price;
+  const { value, regularValue, locale, currency, paymentNote } = siteConfig.price;
   const priceText = formatPrice(value, locale, currency);
+  const regularText = formatPrice(regularValue, locale, currency);
   const [whole, cents] = priceText.replace("R$", "").trim().split(",");
 
   const included = [
@@ -34,7 +35,10 @@ export function Offer() {
             className="mx-auto mt-6 h-auto w-64 rounded-xl"
           />
 
-          <div className="mt-8 flex items-end justify-center gap-1 font-display text-ink-900">
+          <p className="mt-8 text-lg font-semibold text-ink-500">
+            De <span className="line-through">{regularText}</span> por
+          </p>
+          <div className="mt-1 flex items-end justify-center gap-1 font-display text-ink-900">
             <span className="mb-3 text-2xl font-bold text-ink-700">R$</span>
             <span className="text-7xl font-extrabold leading-none">{whole}</span>
             <span className="mb-2 text-3xl font-bold leading-none">,{cents}</span>
