@@ -1,68 +1,88 @@
 import { siteConfig } from "../config/site";
 import { formatPrice } from "../lib/format";
+import { getCheckoutHref } from "../lib/checkout";
+import { trackMetaEvent } from "../lib/metaPixel";
 import { CheckoutButton } from "./CheckoutButton";
 
-function HeroIllustration() {
-  return (
-    <svg viewBox="0 0 400 360" role="img" aria-label="Ilustração de crianças brincando com atividades" className="h-auto w-full max-w-md">
-      <circle cx="320" cy="70" r="46" fill="#ffc93c" />
-      <circle cx="80" cy="300" r="34" fill="#3aa8e8" opacity="0.5" />
-      <rect x="40" y="60" width="150" height="190" rx="18" fill="#ffffff" stroke="#c8ece4" strokeWidth="4" />
-      <rect x="62" y="88" width="106" height="12" rx="6" fill="#12a08c" />
-      <rect x="62" y="116" width="82" height="12" rx="6" fill="#c8ece4" />
-      <rect x="62" y="144" width="96" height="12" rx="6" fill="#c8ece4" />
-      <circle cx="104" cy="206" r="26" fill="#ffe4dc" />
-      <path d="M92 206 l8 8 l16 -18" stroke="#e25f3e" strokeWidth="6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      <rect x="200" y="150" width="160" height="160" rx="20" fill="#ffd55c" />
-      <text x="280" y="250" textAnchor="middle" fontFamily="Baloo 2, sans-serif" fontWeight="800" fontSize="92" fill="#1b2631">
-        A
-      </text>
-      <rect x="220" y="110" width="110" height="56" rx="16" fill="#12a08c" />
-      <text x="275" y="148" textAnchor="middle" fontFamily="Baloo 2, sans-serif" fontWeight="700" fontSize="26" fill="#ffffff">
-        1 2 3
-      </text>
-    </svg>
-  );
-}
+const heroCovers = [
+  { src: "/capa-vogais.webp", alt: "Capa do caderno de vogais" },
+  { src: "/capa-alfabeto.webp", alt: "Capa do caderno de alfabeto" },
+  { src: "/capa-numeros.webp", alt: "Capa do caderno de números" },
+  { src: "/capa-silabas.webp", alt: "Capa do caderno de sílabas" },
+];
 
 export function Hero() {
-  const price = formatPrice(siteConfig.price.value, siteConfig.price.locale, siteConfig.price.currency);
+  const { value, regularValue, locale, currency, paymentNote } = siteConfig.price;
+  const priceText = formatPrice(value, locale, currency);
+  const regularText = formatPrice(regularValue, locale, currency);
 
   return (
-    <section id="topo" className="relative overflow-hidden bg-gradient-to-b from-sun-100 via-paper to-paper pt-28 pb-16 sm:pt-36 sm:pb-24">
-      <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:gap-16">
-        <div className="animate-rise text-center lg:text-left">
+    <section
+      id="topo"
+      className="relative overflow-hidden bg-gradient-to-b from-sun-100 via-paper to-paper pt-28 pb-16 sm:pt-36 sm:pb-24"
+    >
+      <div className="mx-auto grid max-w-6xl gap-6 px-4 sm:px-6 lg:grid-cols-2 lg:gap-x-16 lg:gap-y-8">
+        <div className="animate-rise text-center lg:col-start-1 lg:row-start-1 lg:text-left">
           <span className="inline-block rounded-full bg-white px-4 py-1.5 text-sm font-bold text-primary-700 shadow-sm">
             {siteConfig.tagline}
           </span>
           <h1 className="mt-6 text-4xl font-extrabold text-ink-900 sm:text-5xl lg:text-6xl">
-            Férias mais divertidas, com menos tempo de tela!
+            Uma brincadeira pronta para hoje.
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-lg text-ink-700 sm:text-xl lg:mx-0">
-            O Kit Férias Criativas reúne atividades educativas prontas para imprimir, para a criança aprender e se divertir enquanto você descansa.
+            22 cadernos em PDF para imprimir e brincar com as crianças nas férias.
           </p>
-
-          <div className="mt-8 inline-flex items-baseline gap-3 rounded-2xl bg-white px-5 py-3 text-left shadow-sm ring-1 ring-ink-200">
-            <span className="font-display text-3xl font-extrabold text-ink-900">{price}</span>
-            <span className="text-sm font-bold text-primary-700">pagamento único</span>
-          </div>
-
-          <div className="mt-6 flex flex-col items-center gap-4 sm:flex-row sm:justify-center lg:justify-start">
-            <CheckoutButton label="Quero meu Kit Férias Criativas" size="lg" className="w-full sm:w-auto" />
-            <a
-              href="#conteudo"
-              className="inline-flex w-full items-center justify-center rounded-full border-2 border-primary-600 px-6 py-3.5 font-display text-lg font-bold text-primary-700 transition hover:bg-primary-50 sm:w-auto"
-            >
-              Ver o conteúdo
-            </a>
-          </div>
-          <p className="mt-4 text-sm text-ink-500">Material digital em PDF · Pronto para imprimir</p>
         </div>
 
-        <div className="animate-rise flex justify-center" style={{ animationDelay: "120ms" }}>
-          <div className="animate-float">
-            <HeroIllustration />
-          </div>
+        <div className="animate-rise relative lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:self-center" style={{ animationDelay: "120ms" }}>
+          <a
+            href={getCheckoutHref()}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Comprar o Kit Férias Criativas na Cakto"
+            onClick={() => trackMetaEvent("InitiateCheckout")}
+            className="group block rounded-3xl transition duration-300 hover:-translate-y-1 focus:outline-none focus-visible:ring-4 focus-visible:ring-primary-100"
+          >
+            <img
+              src="/composicao-hero.webp"
+              width={1100}
+              height={560}
+              fetchPriority="high"
+              alt="Capas e páginas reais dos cadernos do kit"
+              className="h-auto w-full rounded-3xl shadow-lg"
+            />
+            <span className="absolute bottom-3 right-3 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-ink-700 shadow-sm">
+              Páginas reais do kit
+            </span>
+          </a>
+        </div>
+
+        <div id="compra-topo" className="animate-rise flex flex-col items-center gap-4 text-center sm:flex-row sm:justify-center lg:col-start-1 lg:row-start-2 lg:justify-start lg:text-left">
+          <CheckoutButton label="Comprar agora" size="lg" className="w-full sm:w-auto" />
+          <p className="text-ink-700">
+            <span className="mr-2 text-base font-semibold text-ink-500 line-through">{regularText}</span>
+            <span className="font-display text-2xl font-extrabold text-ink-900">{priceText}</span>
+            <span className="ml-2 text-sm font-semibold text-primary-700">{paymentNote.toLowerCase()}</span>
+          </p>
+        </div>
+
+        <div className="animate-rise lg:col-start-1 lg:row-start-3" style={{ animationDelay: "200ms" }}>
+          <p className="text-center text-sm font-semibold text-ink-700 lg:text-left">Algumas das atividades</p>
+          <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {heroCovers.map((cover) => (
+              <li key={cover.src}>
+                <img
+                  src={cover.src}
+                  alt={cover.alt}
+                  width={1131}
+                  height={1600}
+                  loading="lazy"
+                  decoding="async"
+                  className="h-auto w-full rounded-xl border border-ink-200 bg-white shadow-sm"
+                />
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </section>

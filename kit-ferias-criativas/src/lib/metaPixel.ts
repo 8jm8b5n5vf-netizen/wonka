@@ -1,37 +1,20 @@
 import { siteConfig } from "../config/site";
-
-type Fbq = ((...args: unknown[]) => void) & { queue?: unknown[][]; loaded?: boolean; version?: string };
-
-declare global {
-  interface Window {
-    fbq?: Fbq;
-  }
+type Fbq = ((...args: unknown[]) => void) & { queue?: unknown[][]; loaded?: boolean; version?: string; callMethod?: (...args: unknown[]) => void; push?: Fbq };
+declare global { interface Window { fbq?: Fbq; _fbq?: Fbq; } }
+export function hasAdConsent(): boolean {
+  try { return localStorage.getItem("ad-consent") === "accepted"; } catch { return false; }
 }
-
-const pixelId = siteConfig.metaPixelId.trim();
-
 export function initMetaPixel(): void {
-  if (!pixelId || typeof window === "undefined" || window.fbq) return;
-
-  const queue: unknown[][] = [];
-  const fbq: Fbq = (...args: unknown[]) => {
-    queue.push(args);
-  };
-  fbq.queue = queue;
-  fbq.loaded = true;
-  fbq.version = "2.0";
-  window.fbq = fbq;
-
+  const id = siteConfig.metaPixelId.trim();
+  if (!id || !hasAdConsent() || window.fbq) return;
+  const fbq: Fbq = (...args) => { if (fbq.callMethod) fbq.callMethod(...args); else fbq.queue?.push(args); };
+  fbq.queue = []; fbq.loaded = true; fbq.version = "2.0"; fbq.push = fbq;
+  window.fbq = fbq; window._fbq = fbq;
   const script = document.createElement("script");
-  script.async = true;
-  script.src = "https://connect.facebook.net/en_US/fbevents.js";
+  script.async = true; script.src = "https://connect.facebook.net/en_US/fbevents.js";
   document.head.appendChild(script);
-
-  fbq("init", pixelId);
-  fbq("track", "PageView");
+  fbq("init", id); fbq("track", "PageView"); fbq("track", "ViewContent");
 }
-
-export function trackMetaEvent(eventName: string): void {
-  if (!pixelId || typeof window === "undefined" || !window.fbq) return;
-  window.fbq("track", eventName);
+export function trackMetaEvent(name: string): void {
+  if (siteConfig.metaPixelId.trim() && hasAdConsent()) window.fbq?.("track", name);
 }
