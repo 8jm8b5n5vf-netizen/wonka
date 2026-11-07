@@ -12,8 +12,9 @@ const heroCovers = [
 ];
 
 export function Hero() {
-  const { value, locale, currency, paymentNote } = siteConfig.price;
+  const { value, regularValue, locale, currency, paymentNote } = siteConfig.price;
   const priceText = formatPrice(value, locale, currency);
+  const regularText = formatPrice(regularValue, locale, currency);
 
   return (
     <section
@@ -59,6 +60,7 @@ export function Hero() {
         <div id="compra-topo" className="animate-rise flex flex-col items-center gap-4 text-center sm:flex-row sm:justify-center lg:col-start-1 lg:row-start-2 lg:justify-start lg:text-left">
           <CheckoutButton label="Comprar agora" size="lg" className="w-full sm:w-auto" />
           <p className="text-ink-700">
+            <span className="mr-2 text-base font-semibold text-ink-500 line-through">{regularText}</span>
             <span className="font-display text-2xl font-extrabold text-ink-900">{priceText}</span>
             <span className="ml-2 text-sm font-semibold text-primary-700">{paymentNote.toLowerCase()}</span>
           </p>

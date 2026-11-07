@@ -42,7 +42,9 @@ export function StickyBuyBar() {
 
   if (!pastHero || blockingVisible || dialogOpen) return null;
 
-  const price = formatPrice(siteConfig.price.value, siteConfig.price.locale, siteConfig.price.currency);
+  const { value, regularValue, locale, currency } = siteConfig.price;
+  const price = formatPrice(value, locale, currency);
+  const regularPrice = formatPrice(regularValue, locale, currency);
 
   return (
     <div
@@ -51,7 +53,8 @@ export function StickyBuyBar() {
     >
       <div className="mx-auto flex max-w-md flex-col gap-2">
         <p className="text-center text-sm font-semibold text-ink-700">
-          {price} · pagamento único
+          <span className="mr-1.5 text-ink-500 line-through">{regularPrice}</span>
+          <span className="text-ink-900">{price}</span> · pagamento único
         </p>
         <CheckoutButton label="Comprar agora" size="lg" className="w-full" />
       </div>
