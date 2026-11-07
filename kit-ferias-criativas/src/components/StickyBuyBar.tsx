@@ -53,7 +53,7 @@ export function StickyBuyBar() {
         <p className="text-center text-sm font-semibold text-ink-700">
           {price} · pagamento único
         </p>
-        <CheckoutButton label="Quero meu kit" size="lg" className="w-full" />
+        <CheckoutButton label="Comprar agora" size="lg" className="w-full" />
       </div>
     </div>
   );

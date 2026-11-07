@@ -55,7 +55,7 @@ export function Offer() {
           </ul>
 
           <div className="mt-10">
-            <CheckoutButton label="Quero meu Kit Férias Criativas" size="lg" className="w-full sm:w-auto" />
+            <CheckoutButton label="Comprar agora" size="lg" className="w-full sm:w-auto" />
           </div>
           <p className="mt-4 text-sm text-ink-500">
             A compra é concluída na Cakto. Direito de arrependimento em 7 dias.{" "}

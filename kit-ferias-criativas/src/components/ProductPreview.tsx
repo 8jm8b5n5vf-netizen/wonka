@@ -36,8 +36,8 @@ export function ProductPreview() {
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <SectionHeading
           eyebrow="Demonstração real"
-          title="Veja como as atividades ficam no papel"
-          description="Toque ou clique numa folha para abrir a amostra ampliada e conferir os enunciados."
+          title="Veja o que dá para imprimir hoje"
+          description="Escolha uma atividade, imprima a página e comece a brincar. Toque numa folha para ampliar."
         />
 
         <ul className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6">
@@ -68,7 +68,7 @@ export function ProductPreview() {
         </ul>
 
         <div className="mt-12 flex justify-center">
-          <CheckoutButton label="Quero meu Kit Férias Criativas" size="lg" className="w-full sm:w-auto" />
+          <CheckoutButton label="Comprar agora" size="lg" className="w-full sm:w-auto" />
         </div>
       </div>
 
