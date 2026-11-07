@@ -1,5 +1,7 @@
 import { siteConfig } from "../config/site";
 import { formatPrice } from "../lib/format";
+import { getCheckoutHref } from "../lib/checkout";
+import { trackMetaEvent } from "../lib/metaPixel";
 import { CheckoutButton } from "./CheckoutButton";
 
 export function Hero() {
@@ -14,40 +16,40 @@ export function Hero() {
             {siteConfig.tagline}
           </span>
           <h1 className="mt-6 text-4xl font-extrabold text-ink-900 sm:text-5xl lg:text-6xl">
-            Férias mais divertidas, com menos tempo de tela!
+            Uma brincadeira pronta para hoje.
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-lg text-ink-700 sm:text-xl lg:mx-0">
-            Escolha uma atividade, imprima uma folha e acompanhe a criança. O kit reúne 22 cadernos em PDF organizados em seis módulos.
+            22 cadernos em PDF para imprimir e brincar com as crianças nas férias.
           </p>
 
-          <div className="mt-8 inline-flex flex-col items-center gap-1 rounded-2xl bg-white px-6 py-4 text-center shadow-sm ring-1 ring-ink-200 lg:items-start lg:text-left">
-            <div className="flex items-baseline gap-2">
-              <span className="font-display text-3xl font-extrabold text-ink-900 sm:text-4xl">{priceText}</span>
-              <span className="text-sm font-bold text-primary-700">{paymentNote.toLowerCase()}</span>
-            </div>
-            <p className="text-sm text-ink-500">Material digital em PDF, sem mensalidade</p>
-          </div>
-
-          <div className="mt-6 flex flex-col items-center gap-4 sm:flex-row sm:justify-center lg:justify-start">
-            <CheckoutButton label="Quero meu Kit Férias Criativas" size="lg" className="w-full sm:w-auto" />
-            <a
-              href="#amostras"
-              className="inline-flex w-full items-center justify-center rounded-full border-2 border-primary-600 px-6 py-3.5 font-display text-lg font-bold text-primary-700 transition hover:bg-primary-50 sm:w-auto"
-            >
-              Ver atividades por dentro
-            </a>
+          <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center lg:justify-start">
+            <CheckoutButton label="Quero meu kit de férias" size="lg" className="w-full sm:w-auto" />
+            <p className="text-center text-ink-700 sm:text-left">
+              <span className="font-display text-2xl font-extrabold text-ink-900">{priceText}</span>
+              <span className="ml-2 text-sm font-semibold text-primary-700">{paymentNote.toLowerCase()}</span>
+            </p>
           </div>
           <p className="mt-4 text-sm text-ink-500">Material digital em PDF · Pronto para imprimir</p>
         </div>
 
         <div className="animate-rise flex justify-center" style={{ animationDelay: "120ms" }}>
-          <img
-            src="/composicao-hero.webp"
-            width={1100}
-            height={560}
-            alt="Capas e páginas reais dos cadernos de vogais, alfabeto e números do kit"
-            className="h-auto w-full max-w-xl rounded-3xl shadow-lg"
-          />
+          <a
+            href={getCheckoutHref()}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Comprar o Kit Férias Criativas na Cakto"
+            onClick={() => trackMetaEvent("InitiateCheckout")}
+            className="block w-full max-w-xl rounded-3xl transition duration-300 hover:-translate-y-1 focus:outline-none focus-visible:ring-4 focus-visible:ring-primary-100"
+          >
+            <img
+              src="/composicao-hero.webp"
+              width={1100}
+              height={560}
+              fetchPriority="high"
+              alt="Capas e páginas reais dos cadernos do kit"
+              className="h-auto w-full rounded-3xl shadow-lg"
+            />
+          </a>
         </div>
       </div>
     </section>
