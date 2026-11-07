@@ -39,7 +39,7 @@ export function Footer() {
         <details id="termos" className="scroll-mt-24 py-4">
           <summary className="cursor-pointer font-bold text-white">Condições do kit</summary>
           <div className="mt-4 space-y-3">
-            <p>O Kit Férias Criativas é um produto digital com 22 cadernos em PDF e materiais de apoio. As imagens desta página mostram exemplos dos arquivos. A compra tem pagamento único. O total apresentado inclui a taxa de serviço informada pela Cakto.</p>
+            <p>O Kit Férias Criativas é um produto digital com 22 cadernos em PDF e materiais de apoio. As imagens desta página mostram exemplos dos arquivos. A compra tem pagamento único, no valor exibido nesta página.</p>
             <p>O pagamento é processado pela Cakto. Com a aprovação, as instruções de acesso são enviadas por e-mail. É necessário um dispositivo que abra PDFs. Papel, impressão e materiais de uso nas atividades são providenciados pelo comprador.</p>
             <p>Os arquivos destinam-se ao uso pessoal e familiar. O acompanhamento de um responsável permite adaptar as propostas à criança. Este material não promete resultados ou prazos de aprendizagem.</p>
             <p>Para cancelamento no prazo de sete dias, consulte a seção de cancelamento e reembolso e o portal da Cakto. O contato do produtor acompanha a confirmação do pedido.</p>

@@ -1,3 +1,4 @@
+import { CheckoutButton } from "./CheckoutButton";
 import { SectionHeading } from "./SectionHeading";
 
 export function Guidance() {
@@ -29,6 +30,10 @@ export function Guidance() {
             A impressão e os materiais, como lápis e massinha, ficam por sua conta. Um adulto acompanha recortes e peças pequenas.
           </p>
           <a className="mt-4 inline-block font-bold text-primary-700 underline" href="#amostras">Abra as amostras e veja os enunciados</a>
+        </div>
+
+        <div className="mt-8 flex justify-center">
+          <CheckoutButton label="Quero meu Kit Férias Criativas" size="lg" className="w-full sm:w-auto" />
         </div>
       </div>
     </section>

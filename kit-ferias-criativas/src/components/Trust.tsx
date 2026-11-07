@@ -15,7 +15,7 @@ export function Trust() {
             ["22 cadernos reais", "Seis módulos com letras, números, traçados, leituras e jogos. As amostras mostram páginas dos arquivos."],
             ["Entrega explicada", "Após o pagamento aprovado, o e-mail leva à área de membros da Cakto para baixar os PDFs."],
             ["Começo guiado", "O guia Comece aqui e o índice ajudam a encontrar a primeira atividade sem se perder."],
-            ["Compra transparente", "R$ 29,90 do kit mais R$ 0,99 de taxa, total R$ 30,89 em pagamento único, sem assinatura."],
+            ["Compra transparente", "R$ 29,90 em pagamento único, sem assinatura nem mensalidade."],
           ].map(([title, body]) => (
             <article key={title} className="rounded-3xl bg-white p-6 ring-1 ring-primary-100">
               <h3 className="text-base font-bold text-primary-700 sm:text-lg">{title}</h3>

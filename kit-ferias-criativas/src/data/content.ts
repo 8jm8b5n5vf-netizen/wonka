@@ -5,7 +5,7 @@ export type BonusId = keyof typeof siteConfig.bonuses;
 export const deliveryFacts = [
   { title: "22 cadernos em PDF", text: "Seis módulos para baixar e abrir no leitor de PDF." },
   { title: "Atividades para imprimir", text: "Escolha a folha, imprima em casa ou em gráfica." },
-  { title: "Pagamento único pela Cakto", text: "R$ 30,89 no total, sem mensalidade." },
+  { title: "Pagamento único pela Cakto", text: "R$ 29,90, sem mensalidade." },
 ];
 
 export const painPoints = [
@@ -49,7 +49,7 @@ export const benefits = [
 export const steps = [
   {
     title: "Finalize o pagamento",
-    text: "A compra acontece no checkout da Cakto. O total é R$ 30,89, em pagamento único.",
+    text: "A compra acontece no checkout da Cakto, em pagamento único de R$ 29,90.",
   },
   {
     title: "Siga o e-mail de acesso",

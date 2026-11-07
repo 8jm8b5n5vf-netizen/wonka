@@ -9,8 +9,6 @@ export const siteConfig = {
 
   price: {
     value: 29.9,
-    serviceFee: 0.99,
-    total: 30.89,
     currency: "BRL",
     locale: "pt-BR",
     paymentNote: "Pagamento único",

@@ -3,10 +3,8 @@ import { formatPrice } from "../lib/format";
 import { CheckoutButton } from "./CheckoutButton";
 
 export function Hero() {
-  const { total, value, serviceFee, locale, currency, paymentNote } = siteConfig.price;
-  const totalText = formatPrice(total, locale, currency);
-  const kitText = formatPrice(value, locale, currency);
-  const feeText = formatPrice(serviceFee, locale, currency);
+  const { value, locale, currency, paymentNote } = siteConfig.price;
+  const priceText = formatPrice(value, locale, currency);
 
   return (
     <section id="topo" className="relative overflow-hidden bg-gradient-to-b from-sun-100 via-paper to-paper pt-28 pb-16 sm:pt-36 sm:pb-24">
@@ -22,14 +20,12 @@ export function Hero() {
             Escolha uma atividade, imprima uma folha e acompanhe a criança. O kit reúne 22 cadernos em PDF organizados em seis módulos.
           </p>
 
-          <div className="mt-8 inline-flex flex-col items-center gap-2 rounded-2xl bg-white px-6 py-4 text-center shadow-sm ring-1 ring-ink-200 lg:items-start lg:text-left">
+          <div className="mt-8 inline-flex flex-col items-center gap-1 rounded-2xl bg-white px-6 py-4 text-center shadow-sm ring-1 ring-ink-200 lg:items-start lg:text-left">
             <div className="flex items-baseline gap-2">
-              <span className="font-display text-3xl font-extrabold text-ink-900 sm:text-4xl">{totalText}</span>
+              <span className="font-display text-3xl font-extrabold text-ink-900 sm:text-4xl">{priceText}</span>
               <span className="text-sm font-bold text-primary-700">{paymentNote.toLowerCase()}</span>
             </div>
-            <p className="text-sm text-ink-500">
-              {kitText} do kit + {feeText} de taxa de serviço
-            </p>
+            <p className="text-sm text-ink-500">Material digital em PDF, sem mensalidade</p>
           </div>
 
           <div className="mt-6 flex flex-col items-center gap-4 sm:flex-row sm:justify-center lg:justify-start">

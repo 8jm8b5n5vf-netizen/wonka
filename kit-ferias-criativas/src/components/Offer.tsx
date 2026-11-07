@@ -3,11 +3,9 @@ import { formatPrice } from "../lib/format";
 import { CheckoutButton } from "./CheckoutButton";
 
 export function Offer() {
-  const { total, value, serviceFee, locale, currency, paymentNote } = siteConfig.price;
-  const totalText = formatPrice(total, locale, currency);
-  const kitText = formatPrice(value, locale, currency);
-  const feeText = formatPrice(serviceFee, locale, currency);
-  const [whole, cents] = totalText.replace("R$", "").trim().split(",");
+  const { value, locale, currency, paymentNote } = siteConfig.price;
+  const priceText = formatPrice(value, locale, currency);
+  const [whole, cents] = priceText.replace("R$", "").trim().split(",");
 
   const included = [
     "22 cadernos em PDF, organizados em seis módulos",
@@ -41,9 +39,6 @@ export function Offer() {
             <span className="mb-2 text-3xl font-bold leading-none">,{cents}</span>
           </div>
           <p className="mt-2 font-semibold text-ink-700">{paymentNote} · Produto digital</p>
-          <p className="mt-1 text-sm text-ink-500">
-            {kitText} do kit + {feeText} de taxa de serviço
-          </p>
 
           <ul className="mx-auto mt-8 max-w-md space-y-3 text-left">
             {included.map((item) => (

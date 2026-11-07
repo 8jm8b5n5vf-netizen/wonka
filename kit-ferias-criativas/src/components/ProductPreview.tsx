@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { samples } from "../data/content";
+import { CheckoutButton } from "./CheckoutButton";
 import { SectionHeading } from "./SectionHeading";
 
 export function ProductPreview() {
@@ -65,6 +66,10 @@ export function ProductPreview() {
             </li>
           ))}
         </ul>
+
+        <div className="mt-12 flex justify-center">
+          <CheckoutButton label="Quero meu Kit Férias Criativas" size="lg" className="w-full sm:w-auto" />
+        </div>
       </div>
 
       {activeSample && (
