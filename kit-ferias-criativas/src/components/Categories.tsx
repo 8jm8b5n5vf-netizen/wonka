@@ -17,8 +17,8 @@ export function Categories() {
               key={module.name}
               className="flex flex-col rounded-3xl border border-ink-200 bg-white p-5 transition duration-300 hover:-translate-y-1 hover:border-primary-500 hover:shadow-md"
             >
-              <div className="flex gap-3">
-                {module.covers.map((cover, i) => (
+              <div className="flex justify-center gap-3">
+                {module.covers.map((cover) => (
                   <img
                     key={cover}
                     src={cover}
@@ -27,8 +27,8 @@ export function Categories() {
                     height={1600}
                     loading="lazy"
                     decoding="async"
-                    className={`h-auto rounded-xl border border-ink-200 object-cover ${
-                      module.covers.length > 1 ? (i === 0 ? "w-1/2" : "w-1/2") : "w-2/3"
+                    className={`h-auto min-w-0 rounded-xl border border-ink-200 ${
+                      module.covers.length > 1 ? "w-1/2" : "w-2/3"
                     }`}
                   />
                 ))}

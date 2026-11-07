@@ -3,42 +3,44 @@ import { siteConfig } from "../config/site";
 import { formatPrice } from "../lib/format";
 import { CheckoutButton } from "./CheckoutButton";
 
+const BLOCKING_SECTION_IDS = ["oferta", "reembolso"];
+
 export function StickyBuyBar() {
   const [pastHero, setPastHero] = useState(false);
-  const [hidden, setHidden] = useState(false);
+  const [blockingVisible, setBlockingVisible] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     const hero = document.getElementById("topo");
-    const offer = document.getElementById("oferta");
-    const reembolso = document.getElementById("reembolso");
-    if (!hero || !offer) return;
+    if (!hero) return;
 
     const heroObserver = new IntersectionObserver(([entry]) => setPastHero(!entry.isIntersecting));
-    const offerObserver = new IntersectionObserver(([entry]) => setHidden(entry.isIntersecting));
     heroObserver.observe(hero);
-    offerObserver.observe(offer);
-    if (reembolso) offerObserver.observe(reembolso);
 
-    const onPrivacy = () => setHidden(true);
-    window.addEventListener("open-privacy", onPrivacy);
-    const onPrivacyClosed = () => {
-      const offer = document.getElementById("oferta");
-      if (offer) {
-        const r = offer.getBoundingClientRect();
-        setHidden(r.top < window.innerHeight && r.bottom > 0);
-      }
-    };
-    window.addEventListener("ad-consent-closed", onPrivacyClosed);
+    const visibility = new Map<Element, boolean>();
+    const blockingObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => visibility.set(entry.target, entry.isIntersecting));
+      setBlockingVisible([...visibility.values()].some(Boolean));
+    });
+    BLOCKING_SECTION_IDS.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) blockingObserver.observe(el);
+    });
+
+    const openDialog = () => setDialogOpen(true);
+    const closeDialog = () => setDialogOpen(false);
+    window.addEventListener("open-privacy", openDialog);
+    window.addEventListener("ad-consent-closed", closeDialog);
 
     return () => {
       heroObserver.disconnect();
-      offerObserver.disconnect();
-      window.removeEventListener("open-privacy", onPrivacy);
-      window.removeEventListener("ad-consent-closed", onPrivacyClosed);
+      blockingObserver.disconnect();
+      window.removeEventListener("open-privacy", openDialog);
+      window.removeEventListener("ad-consent-closed", closeDialog);
     };
   }, []);
 
-  if (!pastHero || hidden) return null;
+  if (!pastHero || blockingVisible || dialogOpen) return null;
 
   const price = formatPrice(siteConfig.price.total, siteConfig.price.locale, siteConfig.price.currency);
 

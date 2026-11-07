@@ -107,16 +107,6 @@ export const modules: Module[] = [
   },
 ];
 
-export const categories = [
-  { name: "Alfabeto", description: "Reconhecimento de letras, traçado e atividades visuais.", cover: "/capa-alfabeto.webp" },
-  { name: "Vogais", description: "Identificação e exercícios com vogais.", cover: "/capa-vogais.webp" },
-  { name: "Sílabas", description: "Sílabas simples e combinações mais complexas.", cover: "/capa-silabas.webp" },
-  { name: "Números e matemática", description: "Contagem, números e operações introdutórias.", cover: "/capa-numeros.webp" },
-  { name: "Coordenação motora", description: "Traçado e atividades para as mãos.", cover: "/capa-coordenacao.webp" },
-  { name: "Pequenas leituras", description: "Textos curtos para ler conforme o nível.", cover: "/capa-leitura.webp" },
-  { name: "Quebra-cabeças", description: "Atividades lúdicas de associação e raciocínio.", cover: "/capa-quebra-cabeca.webp" },
-];
-
 export type Sample = { src: string; alt: string; caption: string };
 
 export const samples: Sample[] = [
