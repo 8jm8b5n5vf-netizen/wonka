@@ -29,7 +29,7 @@ export function HowItWorks() {
         </p>
 
         <div className="mt-10 flex justify-center">
-          <CheckoutButton label="Quero meu Kit Férias Criativas" size="lg" className="w-full sm:w-auto" />
+          <CheckoutButton label="Comprar agora" size="lg" className="w-full sm:w-auto" />
         </div>
       </div>
     </section>

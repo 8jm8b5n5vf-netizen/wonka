@@ -12,7 +12,7 @@ export function FinalCta() {
           {siteConfig.price.paymentNote}, com 22 cadernos em PDF para imprimir e aproveitar em casa.
         </p>
         <div className="mt-8 w-full sm:w-auto">
-          <CheckoutButton label="Quero meu Kit Férias Criativas" size="lg" className="w-full sm:w-auto" />
+          <CheckoutButton label="Comprar agora" size="lg" className="w-full sm:w-auto" />
         </div>
       </div>
     </section>

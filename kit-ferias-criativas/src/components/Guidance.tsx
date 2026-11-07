@@ -33,7 +33,7 @@ export function Guidance() {
         </div>
 
         <div className="mt-8 flex justify-center">
-          <CheckoutButton label="Quero meu Kit Férias Criativas" size="lg" className="w-full sm:w-auto" />
+          <CheckoutButton label="Comprar agora" size="lg" className="w-full sm:w-auto" />
         </div>
       </div>
     </section>

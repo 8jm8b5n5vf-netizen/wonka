@@ -3,7 +3,7 @@ import { siteConfig } from "../config/site";
 import { formatPrice } from "../lib/format";
 import { CheckoutButton } from "./CheckoutButton";
 
-const BLOCKING_SECTION_IDS = ["oferta", "reembolso"];
+const BLOCKING_SECTION_IDS = ["oferta"];
 
 export function StickyBuyBar() {
   const [pastHero, setPastHero] = useState(false);
@@ -11,7 +11,7 @@ export function StickyBuyBar() {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
-    const hero = document.getElementById("topo");
+    const hero = document.getElementById("compra-topo");
     if (!hero) return;
 
     const heroObserver = new IntersectionObserver(([entry]) => setPastHero(!entry.isIntersecting));

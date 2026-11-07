@@ -12,6 +12,7 @@ export function Offer() {
     "Calendário de 30 Dias de Férias e Guia Prático para os Pais",
     "Guia Comece aqui e índice dos cadernos",
     "Pagamento único, sem assinatura",
+    "Acesso na área de membros da Cakto após a aprovação do pagamento",
   ];
 
   return (

@@ -56,7 +56,7 @@ export function Hero() {
           </a>
         </div>
 
-        <div className="animate-rise flex flex-col items-center gap-4 text-center sm:flex-row sm:justify-center lg:col-start-1 lg:row-start-2 lg:justify-start lg:text-left">
+        <div id="compra-topo" className="animate-rise flex flex-col items-center gap-4 text-center sm:flex-row sm:justify-center lg:col-start-1 lg:row-start-2 lg:justify-start lg:text-left">
           <CheckoutButton label="Comprar agora" size="lg" className="w-full sm:w-auto" />
           <p className="text-ink-700">
             <span className="font-display text-2xl font-extrabold text-ink-900">{priceText}</span>

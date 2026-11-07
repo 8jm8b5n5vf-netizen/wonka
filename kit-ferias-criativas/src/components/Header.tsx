@@ -44,7 +44,7 @@ export function Header() {
           ))}
         </nav>
 
-        <CheckoutButton label="Quero meu kit" size="md" className="shrink-0 whitespace-nowrap px-4 py-2 text-sm sm:px-5 sm:text-base" />
+        <CheckoutButton label="Comprar agora" size="md" className="shrink-0 whitespace-nowrap px-4 py-2 text-sm sm:px-5 sm:text-base" />
       </div>
     </header>
   );
